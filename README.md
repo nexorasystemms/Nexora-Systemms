@@ -60,6 +60,10 @@ network-free TypeScript; no Supabase connection needed to run it.
 
 ## What's built vs. what's left
 
+**Also built, beyond the SRS's staff-console scope**: a borrower self-service portal
+(`/portal`) — register, apply, and track application status — described in its own section
+below.
+
 **Built** (Must-priority items from SRS §9.1, end to end):
 
 - Multi-tenant schema + RLS + audit log + document store + policy-parameter service
@@ -92,3 +96,34 @@ credit memos, live bureau/bank API integration, automated collections, MLR-1/MLR
 - Bureau capture screen (FR-BUR-01, a Should) and the override/portfolio reports (FR-DEC-07/
   FR-RPT-03, also Should) are minimal first passes — check them against real week-4 data.
 - Every `TODO` policy-parameter value in `0006_seed_policy_params.sql` (see step 8 above).
+
+## 4. Borrower portal (`/portal`)
+
+A self-service track for borrowers, separate from the staff console — not part of the
+original SRS pilot scope, added afterwards. Run `supabase/migrations/0009_portal_applicant_accounts.sql`
+(after 0001-0008) to enable it; it's additive and safe to run against an existing pilot database.
+
+- **`/portal/register`** — a borrower creates their own login and applicant profile in one
+  step (the same fields staff capture at intake: identity, contact, household, next of kin).
+  If a staff member already created a walk-in profile for that ID number, registering with
+  the same ID number **claims** that existing record instead of duplicating it.
+- **`/portal/login`** — email/password only. MFA is a staff-only requirement (FR-CORE-03);
+  borrowers don't get the enrolment gate.
+- **`/portal`** — dashboard: a stage tracker (Submitted → Under Review → Decision →
+  Agreement → Disbursed) for the borrower's current application, or a CTA to start one.
+- **`/portal/apply`** — three-step wizard: loan amount/term with a live statutory
+  finance-charge-cap disclosure, employment & income, then document upload (ID, payslip or
+  alternative evidence, bank statement) and the five unbundled consents (FR-CONSENT-01)
+  before submitting.
+
+Access control is entirely RLS-driven, not role checks: a borrower's Supabase Auth user is
+linked to exactly one `applicants` row via the new `auth_user_id` column, and every policy in
+the 0009 migration scopes reads/writes to rows reachable from that link. A borrower never gets
+broader tenant or cross-applicant visibility the way staff do — there's no `platform_role` or
+`role` concept on this side at all.
+
+**Known gaps, same spirit as the section above**: no email verification step is enforced (the
+portal assumes Supabase's default signup behaviour, whatever the project has configured); no
+password reset flow; the "claim an existing walk-in profile" path has no rate limiting; and the
+Apply wizard's resume logic is a simple heuristic (draft exists → resume at the employment or
+documents step), not a fully editable in-progress state.

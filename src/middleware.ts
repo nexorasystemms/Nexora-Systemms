@@ -1,10 +1,14 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_PATHS = ["/login", "/auth", "/_next", "/favicon.ico", "/brand"];
+const PUBLIC_PATHS = ["/login", "/auth", "/_next", "/favicon.ico", "/brand", "/portal/login", "/portal/register"];
 
 function isPublicPath(pathname: string) {
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
+}
+
+function isPortalPath(pathname: string) {
+  return pathname === "/portal" || pathname.startsWith("/portal/");
 }
 
 export async function middleware(request: NextRequest) {
@@ -34,7 +38,7 @@ export async function middleware(request: NextRequest) {
 
   if (!user && !isPublicPath(request.nextUrl.pathname)) {
     const url = request.nextUrl.clone();
-    url.pathname = "/login";
+    url.pathname = isPortalPath(request.nextUrl.pathname) ? "/portal/login" : "/login";
     url.searchParams.set("next", request.nextUrl.pathname);
     return NextResponse.redirect(url);
   }
@@ -42,6 +46,13 @@ export async function middleware(request: NextRequest) {
   if (user && request.nextUrl.pathname === "/login") {
     const url = request.nextUrl.clone();
     url.pathname = "/";
+    url.search = "";
+    return NextResponse.redirect(url);
+  }
+
+  if (user && (request.nextUrl.pathname === "/portal/login" || request.nextUrl.pathname === "/portal/register")) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/portal";
     url.search = "";
     return NextResponse.redirect(url);
   }

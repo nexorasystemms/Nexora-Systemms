@@ -51,6 +51,7 @@ export type PolicyParamRow = {
 export type ApplicantRow = {
   id: string;
   tenant_id: string;
+  auth_user_id: string | null;
   full_name: string;
   sex: "M" | "F" | null;
   id_type: "personal_id" | "passport";
@@ -384,6 +385,8 @@ export interface Database {
       tokenize_secure_value: { Args: { p_tenant_id: string; p_field_type: string; p_plaintext: string }; Returns: string };
       reveal_secure_value: { Args: { p_token: string }; Returns: string };
       next_reference_number: { Args: { p_tenant_id: string; p_seq_type: string; p_prefix: string }; Returns: string };
+      portal_default_tenant_id: { Args: Record<string, never>; Returns: string };
+      portal_disclosure_params: { Args: { p_tenant_id: string }; Returns: Record<string, unknown> };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
