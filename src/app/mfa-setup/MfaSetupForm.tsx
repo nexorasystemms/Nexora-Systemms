@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
@@ -13,10 +13,28 @@ export default function MfaSetupForm() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // Guards against React Strict Mode's double-invoked effect in dev, which otherwise fires
+  // enroll() twice and collides on the default empty friendly name.
+  const enrollStarted = useRef(false);
+
   useEffect(() => {
+    if (enrollStarted.current) return;
+    enrollStarted.current = true;
+
     async function enroll() {
       const supabase = createClient();
-      const { data, error: enrollError } = await supabase.auth.mfa.enroll({ factorType: "totp" });
+
+      // Clear out any unverified factor left over from an earlier abandoned attempt —
+      // Supabase rejects a new enroll() with a duplicate-friendly-name error otherwise.
+      const { data: factors } = await supabase.auth.mfa.listFactors();
+      for (const f of factors?.totp.filter((f) => f.status === "unverified") ?? []) {
+        await supabase.auth.mfa.unenroll({ factorId: f.id });
+      }
+
+      const { data, error: enrollError } = await supabase.auth.mfa.enroll({
+        factorType: "totp",
+        friendlyName: `staff-totp-${Date.now()}`,
+      });
       if (enrollError) {
         setError(enrollError.message);
         return;
