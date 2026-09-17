@@ -109,8 +109,10 @@ original SRS pilot scope, added afterwards. Run `supabase/migrations/0009_portal
   things set in the Supabase dashboard, not in code: **Authentication → Providers → Email →
   "Confirm email"** must be **ON** (otherwise no code is ever sent, and verification will
   fail), and the **"Confirm signup" email template** (Authentication → Email Templates) must
-  be edited to display `{{ .Token }}` — by default it only shows a confirmation *link*, not
-  the 6-digit code this flow expects the borrower to type in. If a staff member already
+  be replaced with `supabase/email-templates/confirm-signup.html` — Supabase's default only
+  shows a confirmation *link*, not the 6-digit code this flow expects the borrower to type in,
+  and deliberately has no fallback link either (there's no `/auth` callback route built to
+  land on if someone clicked one instead of typing the code). If a staff member already
   created a walk-in profile for that ID number, verifying **claims** that existing record
   instead of duplicating it.
 - **`/portal/login`** — email/password only. MFA is a staff-only requirement (FR-CORE-03);
