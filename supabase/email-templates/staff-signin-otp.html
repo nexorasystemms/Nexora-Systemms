@@ -1,0 +1,87 @@
+<!--
+  Supabase Auth email template: "Magic Link" (Authentication → Emails → Magic link or OTP)
+  This is the template Supabase uses whenever the app calls signInWithOtp() — the one shown
+  in your screenshot, currently rendering a "Sign in" link instead of a code.
+
+  Paste this in as the Source, replacing the default. Shows only {{ .Token }} — no link — for
+  the same reason as the registration template: there's no /auth callback route built for a
+  clicked link to land on, so a link-only or link+code hybrid would silently break or confuse.
+
+  Before using: replace LOGO_URL with a real, publicly reachable URL for
+  public/brand/nexora-logo-horizontal.png (see confirm-signup.html's header comment).
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Your sign-in code</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f6f7fb; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f6f7fb; padding:32px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="max-width:480px; width:100%; background-color:#ffffff; border:1px solid #e3e5ef; border-radius:12px; overflow:hidden;">
+
+          <!-- Header / logo -->
+          <tr>
+            <td align="center" style="padding:32px 32px 16px;">
+              <img
+                src="LOGO_URL"
+                alt="Nexora Systems"
+                width="180"
+                style="display:block; width:180px; max-width:100%; height:auto;"
+              />
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:8px 32px 0;">
+              <h1 style="margin:0 0 8px; font-size:20px; line-height:28px; color:#241c5b; font-weight:600;">
+                Your sign-in code
+              </h1>
+              <p style="margin:0 0 24px; font-size:14px; line-height:22px; color:#6b7089;">
+                Enter this code to finish signing in to the Cash Loan Console. It expires
+                shortly and can only be used once.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Code -->
+          <tr>
+            <td style="padding:0 32px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td align="center" style="background-color:#f6f7fb; border:1px solid #e3e5ef; border-radius:8px; padding:20px;">
+                    <span style="font-family:'Courier New',Courier,monospace; font-size:32px; font-weight:700; letter-spacing:10px; color:#241c5b;">
+                      {{ .Token }}
+                    </span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding:24px 32px 32px;">
+              <p style="margin:0 0 16px; font-size:13px; line-height:20px; color:#6b7089;">
+                Didn't try to sign in? Ignore this email and consider letting your administrator
+                know — no one can access your account without this code.
+              </p>
+              <hr style="border:none; border-top:1px solid #e3e5ef; margin:0 0 16px;" />
+              <p style="margin:0; font-size:12px; line-height:18px; color:#6b7089;">
+                Nexora Intelligent Operations Platform — Cash Loan Module
+                <br />
+                TMU CashLoan CC pilot — Staff Console
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
