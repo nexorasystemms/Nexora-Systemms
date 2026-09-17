@@ -44,7 +44,6 @@ export default function LoginForm() {
       setError(otpError.message);
       return;
     }
-    setInfo(`We've emailed a 6-digit code to ${email}.`);
     setStage("otp");
   }
 
@@ -127,7 +126,7 @@ export default function LoginForm() {
           </form>
         ) : (
           <form onSubmit={handleOtpSubmit} className="space-y-4">
-            <h1 className="text-lg font-semibold text-brand-navy mb-1">Enter your verification code</h1>
+            <h1 className="text-lg font-semibold text-brand-navy mb-4">Enter the verification code sent to your email</h1>
             {info && <p className="text-sm text-brand-muted mb-4">{info}</p>}
 
             <input
