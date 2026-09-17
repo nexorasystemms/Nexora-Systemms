@@ -8,8 +8,8 @@ import type { StaffRole } from "@/types/database";
 
 // FR-CORE-02: staff accounts are tenant-scoped, individually attributable, one role each.
 // Creates the Supabase Auth user (service-role admin API) and the matching public.users row
-// in one step, so an invited staff member can sign in and immediately hit the MFA-enrolment
-// gate (FR-CORE-03) on first login.
+// in one step, so an invited staff member can sign in and immediately go through the
+// password + emailed-code login flow (see src/app/login/LoginForm.tsx).
 export async function inviteStaff(formData: FormData) {
   const staff = await requireRole(["admin", "super_admin"]);
 

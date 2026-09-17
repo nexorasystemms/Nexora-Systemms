@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 
-type Stage = "password" | "mfa";
+type Stage = "password" | "otp";
 
 export default function LoginForm() {
   const router = useRouter();
@@ -16,10 +16,15 @@ export default function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
-  const [factorId, setFactorId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // Second factor: an emailed 6-digit code, not an authenticator app. NOTE — this is a UI-level
+  // gate, not enforced session/AAL-level MFA the way TOTP is: signInWithPassword already issues
+  // a fully valid session before this code is ever checked, since Supabase has no "email" MFA
+  // factor type to layer on top of it. Requiring this step is a deliberate, documented weakening
+  // of the SRS's FR-CORE-03 control — see README §"Staff login" before relying on it for go-live.
   async function handlePasswordSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -33,21 +38,26 @@ export default function LoginForm() {
       return;
     }
 
-    // FR-CORE-03: MFA is mandatory for every staff account, no exceptions.
-    const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-    if (aal?.nextLevel === "aal2" && aal.nextLevel !== aal.currentLevel) {
-      const { data: factors } = await supabase.auth.mfa.listFactors();
-      const totp = factors?.totp?.[0];
-      if (totp) {
-        setFactorId(totp.id);
-        setStage("mfa");
-        setLoading(false);
-        return;
-      }
+    const { error: otpError } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
+    setLoading(false);
+    if (otpError) {
+      setError(otpError.message);
+      return;
     }
+    setInfo(`We've emailed a 6-digit code to ${email}.`);
+    setStage("otp");
+  }
 
-    if (aal?.currentLevel !== "aal2") {
-      router.push("/mfa-setup");
+  async function handleOtpSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    const supabase = createClient();
+
+    const { error: verifyError } = await supabase.auth.verifyOtp({ email, token: code, type: "email" });
+    setLoading(false);
+    if (verifyError) {
+      setError(verifyError.message);
       return;
     }
 
@@ -55,34 +65,16 @@ export default function LoginForm() {
     router.refresh();
   }
 
-  async function handleMfaSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!factorId) return;
+  async function handleResend() {
     setError(null);
-    setLoading(true);
+    setInfo(null);
     const supabase = createClient();
-
-    const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({ factorId });
-    if (challengeError || !challenge) {
-      setError(challengeError?.message ?? "Could not start MFA challenge");
-      setLoading(false);
+    const { error: otpError } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
+    if (otpError) {
+      setError(otpError.message);
       return;
     }
-
-    const { error: verifyError } = await supabase.auth.mfa.verify({
-      factorId,
-      challengeId: challenge.id,
-      code,
-    });
-
-    if (verifyError) {
-      setError(verifyError.message);
-      setLoading(false);
-      return;
-    }
-
-    router.push(next);
-    router.refresh();
+    setInfo("A new code is on its way.");
   }
 
   return (
@@ -134,9 +126,9 @@ export default function LoginForm() {
             </button>
           </form>
         ) : (
-          <form onSubmit={handleMfaSubmit} className="space-y-4">
-            <h1 className="text-lg font-semibold text-brand-navy mb-1">Enter your MFA code</h1>
-            <p className="text-sm text-brand-muted mb-4">Open your authenticator app for the 6-digit code.</p>
+          <form onSubmit={handleOtpSubmit} className="space-y-4">
+            <h1 className="text-lg font-semibold text-brand-navy mb-1">Enter your verification code</h1>
+            {info && <p className="text-sm text-brand-muted mb-4">{info}</p>}
 
             <input
               type="text"
@@ -158,6 +150,10 @@ export default function LoginForm() {
               className="w-full rounded-md bg-brand-navy text-white py-2 text-sm font-medium hover:bg-brand-navy-light transition disabled:opacity-50"
             >
               {loading ? "Verifying…" : "Verify"}
+            </button>
+
+            <button type="button" onClick={handleResend} className="w-full text-sm text-brand-blue hover:underline">
+              Resend code
             </button>
           </form>
         )}

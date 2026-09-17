@@ -26,8 +26,11 @@ Three-tier roles, per the SRS's own role catalogue (Table 1):
    value at creation time, which is fine to keep, but note it down / back it up somewhere
    safe (losing it makes every T3 field permanently unreadable). Do **not** run
    `insert into encryption_keys` again after go-live.
-5. In **Authentication → Providers**, keep email/password enabled. MFA (TOTP) is enforced by
-   the app itself (`FR-CORE-03`), not a Supabase project setting, so nothing to toggle there.
+5. In **Authentication → Providers**, keep email/password enabled. Staff sign-in also sends a
+   second-factor code via **Authentication → Emails → Magic link or OTP** — replace that
+   template's source with `supabase/email-templates/staff-signin-otp.html` (Nexora-branded,
+   shows only the code). See the **Staff login** note below before treating this as
+   equivalent to the SRS's original MFA requirement.
 6. Copy `.env.local.example` to `.env.local` and fill in your project's URL + anon key +
    service role key (Project Settings → API).
 7. Create your first Super Admin: in Supabase Auth, add a user (or use the app's own invite
@@ -45,8 +48,32 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:3000 — you'll land on `/login`. First sign-in for any account walks
-through mandatory MFA enrolment (`/mfa-setup`) before reaching the console, per FR-CORE-03.
+Open http://localhost:3000 — you'll land on `/login`. Every sign-in is password, then a
+6-digit code emailed to the account (see **Staff login** below — this replaced the
+authenticator-app TOTP flow FR-CORE-03 originally specified).
+
+### Staff login — changed from the SRS's original FR-CORE-03 design
+
+The SRS specifies authenticator-app TOTP as staff MFA, "mandatory... no exceptions." This
+build instead emails a 6-digit code (`supabase.auth.signInWithOtp` / `verifyOtp`, using the
+**Magic link or OTP** template — see above) as the second step after password sign-in, per an
+explicit decision to drop the authenticator-app requirement.
+
+**This is not a like-for-like swap — it's a real reduction in what the control guarantees**,
+and should get the written decision-log entry the SRS itself requires for scope changes
+(§9.3) before go-live, not just this README note:
+
+- Supabase's session-enforced MFA (`auth.mfa.*`, AAL1/AAL2) only supports TOTP or SMS as
+  factor types — there's no "email" factor to plug into that same enforcement path.
+- `signInWithPassword` already returns a fully valid session before the emailed code is ever
+  checked. The code step here is a **UI-level gate in this app's login form**, not something
+  enforced at the session or RLS layer — anyone who already has a valid session (e.g. a
+  stolen cookie, or a direct API call skipping the login form) isn't blocked by it the way
+  AAL2-gated TOTP would block them.
+- The old `/mfa-setup` enrolment screen and the `users.mfa_enrolled` enrolment concept are
+  gone — every sign-in now triggers the emailed code automatically, there's no separate
+  enrol-once step, and the Staff & Roles page no longer shows an MFA column since there's
+  nothing per-account left to track.
 
 ## 3. Tests
 
@@ -68,7 +95,7 @@ below.
 
 - Multi-tenant schema + RLS + audit log + document store + policy-parameter service
   (`supabase/migrations/`)
-- MFA-gated auth, role-based console shell
+- Password + emailed-code auth (see **Staff login** note above), role-based console shell
 - Applicant intake with ID-number duplicate detection (tokenised, HMAC blind index)
 - Application intake: employment, credit history, bank details (tokenised), income/expenditure
   with live A–E–S computation
@@ -115,8 +142,8 @@ original SRS pilot scope, added afterwards. Run `supabase/migrations/0009_portal
   land on if someone clicked one instead of typing the code). If a staff member already
   created a walk-in profile for that ID number, verifying **claims** that existing record
   instead of duplicating it.
-- **`/portal/login`** — email/password only. MFA is a staff-only requirement (FR-CORE-03);
-  borrowers don't get the enrolment gate.
+- **`/portal/login`** — email/password only, no second factor. The emailed 6-digit code at
+  sign-in (see **Staff login** above) is staff-only.
 - **`/portal`** — dashboard: a stage tracker (Submitted → Under Review → Decision →
   Agreement → Disbursed) for the borrower's current application, or a CTA to start one.
 - **`/portal/apply`** — three-step wizard: loan amount/term with a live statutory

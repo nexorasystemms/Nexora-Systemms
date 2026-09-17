@@ -22,7 +22,8 @@ export default function LoginForm() {
     setLoading(true);
     const supabase = createClient();
 
-    // MFA is a staff-only requirement (FR-CORE-03) — borrowers sign in with just a password.
+    // The emailed second-factor code (FR-CORE-03) is a staff-only requirement — borrowers
+    // sign in with just a password.
     const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
     if (signInError) {
       setError(signInError.message);
