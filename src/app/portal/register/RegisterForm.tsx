@@ -1,14 +1,98 @@
 "use client";
 
-import { useActionState } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { registerBorrower, type ActionState } from "../actions";
-
-const initialState: ActionState = { status: "idle" };
+import { useRouter } from "next/navigation";
+import { startBorrowerRegistration, verifyBorrowerRegistration, resendRegistrationOtp } from "../actions";
 
 export default function RegisterForm() {
-  const [state, formAction, pending] = useActionState(registerBorrower, initialState);
+  const router = useRouter();
+  const [step, setStep] = useState<"details" | "verify">("details");
+  const [pendingFormData, setPendingFormData] = useState<FormData | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+  const [code, setCode] = useState("");
+
+  async function handleDetailsSubmit(formData: FormData) {
+    setError(null);
+    setPending(true);
+    const result = await startBorrowerRegistration({ status: "idle" }, formData);
+    setPending(false);
+    if (result.status === "error") {
+      setError(result.message ?? "Could not create your account.");
+      return;
+    }
+    setPendingFormData(formData);
+    setInfo(`We've emailed a 6-digit code to ${formData.get("email")}.`);
+    setStep("verify");
+  }
+
+  async function handleVerifySubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!pendingFormData) return;
+    setError(null);
+    setPending(true);
+    const result = await verifyBorrowerRegistration(code, pendingFormData);
+    setPending(false);
+    if (result.status === "error") {
+      setError(result.message ?? "Could not verify that code.");
+      return;
+    }
+    router.push("/portal");
+    router.refresh();
+  }
+
+  async function handleResend() {
+    if (!pendingFormData) return;
+    setError(null);
+    setInfo(null);
+    const result = await resendRegistrationOtp(String(pendingFormData.get("email") ?? ""));
+    setInfo(result.status === "success" ? "A new code is on its way." : null);
+    if (result.status === "error") setError(result.message ?? "Could not resend the code.");
+  }
+
+  if (step === "verify") {
+    return (
+      <div className="w-full max-w-sm">
+        <div className="flex justify-center mb-6">
+          <Image src="/brand/nexora-logo-stacked.png" alt="Nexora Systems" width={110} height={110} priority />
+        </div>
+        <form onSubmit={handleVerifySubmit} className="bg-brand-surface border border-brand-border rounded-xl shadow-sm p-8 space-y-4">
+          <h1 className="text-lg font-semibold text-brand-navy mb-1">Verify your email</h1>
+          {info && <p className="text-sm text-brand-muted">{info}</p>}
+
+          {error && <div className="rounded-md bg-red-50 border border-red-200 text-danger px-4 py-3 text-sm">{error}</div>}
+
+          <input
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            maxLength={6}
+            required
+            autoFocus
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            placeholder="6-digit code"
+            className="w-full rounded-md border border-brand-border px-3 py-2 text-center text-lg tracking-[0.5em] focus:outline-none focus:ring-2 focus:ring-brand-blue"
+          />
+
+          <button
+            type="submit"
+            disabled={pending}
+            className="w-full rounded-md bg-brand-navy text-white py-2 text-sm font-medium hover:bg-brand-navy-light transition disabled:opacity-50"
+          >
+            {pending ? "Verifying…" : "Verify & create account"}
+          </button>
+
+          <button type="button" onClick={handleResend} className="w-full text-sm text-brand-blue hover:underline">
+            Resend code
+          </button>
+        </form>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-2xl">
@@ -16,7 +100,7 @@ export default function RegisterForm() {
         <Image src="/brand/nexora-logo-stacked.png" alt="Nexora Systems" width={110} height={110} priority />
       </div>
 
-      <form action={formAction} className="bg-brand-surface border border-brand-border rounded-xl shadow-sm p-8 space-y-6">
+      <form action={handleDetailsSubmit} className="bg-brand-surface border border-brand-border rounded-xl shadow-sm p-8 space-y-6">
         <div>
           <h1 className="text-lg font-semibold text-brand-navy mb-1">Create your account</h1>
           <p className="text-sm text-brand-muted">
@@ -25,8 +109,8 @@ export default function RegisterForm() {
           </p>
         </div>
 
-        {state.status === "error" && (
-          <div className="rounded-md bg-red-50 border border-red-200 text-danger px-4 py-3 text-sm">{state.message}</div>
+        {error && (
+          <div className="rounded-md bg-red-50 border border-red-200 text-danger px-4 py-3 text-sm">{error}</div>
         )}
 
         <Section title="Login details">
@@ -83,7 +167,7 @@ export default function RegisterForm() {
           disabled={pending}
           className="w-full rounded-md bg-brand-navy text-white py-2.5 text-sm font-medium hover:bg-brand-navy-light transition disabled:opacity-50"
         >
-          {pending ? "Creating account…" : "Create account"}
+          {pending ? "Sending code…" : "Continue"}
         </button>
 
         <p className="text-sm text-brand-muted text-center">

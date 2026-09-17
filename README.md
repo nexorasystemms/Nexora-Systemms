@@ -103,10 +103,16 @@ A self-service track for borrowers, separate from the staff console — not part
 original SRS pilot scope, added afterwards. Run `supabase/migrations/0009_portal_applicant_accounts.sql`
 (after 0001-0008) to enable it; it's additive and safe to run against an existing pilot database.
 
-- **`/portal/register`** — a borrower creates their own login and applicant profile in one
-  step (the same fields staff capture at intake: identity, contact, household, next of kin).
-  If a staff member already created a walk-in profile for that ID number, registering with
-  the same ID number **claims** that existing record instead of duplicating it.
+- **`/portal/register`** — two steps: the borrower fills in the same fields staff capture at
+  intake (identity, contact, household, next of kin) plus a password, then verifies a 6-digit
+  code emailed to them before the applicant profile is actually written. This requires two
+  things set in the Supabase dashboard, not in code: **Authentication → Providers → Email →
+  "Confirm email"** must be **ON** (otherwise no code is ever sent, and verification will
+  fail), and the **"Confirm signup" email template** (Authentication → Email Templates) must
+  be edited to display `{{ .Token }}` — by default it only shows a confirmation *link*, not
+  the 6-digit code this flow expects the borrower to type in. If a staff member already
+  created a walk-in profile for that ID number, verifying **claims** that existing record
+  instead of duplicating it.
 - **`/portal/login`** — email/password only. MFA is a staff-only requirement (FR-CORE-03);
   borrowers don't get the enrolment gate.
 - **`/portal`** — dashboard: a stage tracker (Submitted → Under Review → Decision →

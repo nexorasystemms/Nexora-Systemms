@@ -11,10 +11,12 @@ import { requireBorrower } from "@/lib/current-borrower";
 export type ActionState = { status: "idle" | "error" | "success"; message?: string };
 
 // ---------------------------------------------------------------------------
-// Registration — collects the same applicant profile staff capture at intake
-// (FR-APP-01/02), plus login credentials, in one step. A borrower's own signed-in
-// session is the anchor everything else in the portal hangs off, via applicants.auth_user_id
-// (see 0009_portal_applicant_accounts.sql).
+// Registration — two steps, because the applicant profile (FR-APP-01/02's field set, plus
+// login credentials) can only be written once the borrower has proven they own the email
+// address. Step 1 just calls signUp(); with "Confirm email" on, that returns no session yet,
+// so nothing else can be written under RLS until step 2's verifyOtp() actually establishes
+// one. The profile fields collected in step 1 travel back from the client on step 2's submit
+// (see RegisterForm.tsx) rather than being persisted server-side in between.
 // ---------------------------------------------------------------------------
 
 const registerSchema = z.object({
@@ -33,7 +35,32 @@ const registerSchema = z.object({
   next_of_kin_mobile: z.string().min(7),
 });
 
-export async function registerBorrower(_prev: ActionState, formData: FormData): Promise<ActionState> {
+export async function startBorrowerRegistration(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const parsed = registerSchema.safeParse(Object.fromEntries(formData.entries()));
+  if (!parsed.success) {
+    return { status: "error", message: parsed.error.issues.map((i) => i.message).join("; ") };
+  }
+
+  const supabase = await createClient();
+  const { error: signUpError } = await supabase.auth.signUp({
+    email: parsed.data.email,
+    password: parsed.data.password,
+  });
+  if (signUpError) {
+    return { status: "error", message: signUpError.message };
+  }
+
+  return { status: "success" };
+}
+
+export async function resendRegistrationOtp(email: string): Promise<ActionState> {
+  const supabase = await createClient();
+  const { error } = await supabase.auth.resend({ type: "signup", email });
+  if (error) return { status: "error", message: error.message };
+  return { status: "success" };
+}
+
+export async function verifyBorrowerRegistration(code: string, formData: FormData): Promise<ActionState> {
   const parsed = registerSchema.safeParse(Object.fromEntries(formData.entries()));
   if (!parsed.success) {
     return { status: "error", message: parsed.error.issues.map((i) => i.message).join("; ") };
@@ -41,15 +68,15 @@ export async function registerBorrower(_prev: ActionState, formData: FormData): 
   const data = parsed.data;
 
   const supabase = await createClient();
-
-  const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+  const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
     email: data.email,
-    password: data.password,
+    token: code,
+    type: "signup",
   });
-  if (signUpError || !signUpData.user) {
-    return { status: "error", message: signUpError?.message ?? "Could not create your account." };
+  if (verifyError || !verifyData.user) {
+    return { status: "error", message: verifyError?.message ?? "Could not verify that code." };
   }
-  const userId = signUpData.user.id;
+  const userId = verifyData.user.id;
 
   const { data: tenantId, error: tenantError } = await supabase.rpc("portal_default_tenant_id");
   if (tenantError || !tenantId) {
