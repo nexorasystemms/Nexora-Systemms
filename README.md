@@ -26,15 +26,31 @@ Three-tier roles, per the SRS's own role catalogue (Table 1):
    value at creation time, which is fine to keep, but note it down / back it up somewhere
    safe (losing it makes every T3 field permanently unreadable). Do **not** run
    `insert into encryption_keys` again after go-live.
-5. In **Authentication → Providers**, keep email/password enabled. MFA (TOTP) is enforced by
-   the app itself (`FR-CORE-03`), not a Supabase project setting, so nothing to toggle there.
+5. In **Authentication → Providers**, keep email/password enabled. Admin and super admin
+   accounts get a 6-digit code emailed to them on every login. The admin code is generated via
+   `auth.admin.generateLink()` (a privileged server call — see `src/app/login/actions.ts`)
+   and emailed by Gmail SMTP or Resend (see step 6), not by Supabase's own (rate-limited) OTP
+   email sender, so there's nothing to configure on the Supabase side for this.
 6. Copy `.env.local.example` to `.env.local` and fill in your project's URL + anon key +
    service role key (Project Settings → API).
-7. Create your first Super Admin: in Supabase Auth, add a user (or use the app's own invite
-   flow once a super admin exists), then run the `insert into public.users (...)` snippet at
-   the bottom of `supabase/migrations/0006_seed_policy_params.sql`, filling in that user's
-   auth UUID.
-8. **Before go-live**, replace every `TODO` value in `0006_seed_policy_params.sql`
+7. Pick an email sender for the admin login code (`src/lib/email/send.ts` tries Gmail first,
+   falls back to Resend):
+   - **Gmail SMTP** — the right choice while Nexora has no custom domain, since it needs
+     none and can email any recipient. Turn on 2-Step Verification on the sending Google
+     account, then Google Account → Security → 2-Step Verification → App passwords → generate
+     one for "Mail" (16 characters, no spaces). Set `GMAIL_USER` (the Gmail address) and
+     `GMAIL_APP_PASSWORD` (the generated password — **not** the account's normal password).
+   - **Resend** — free at [resend.com](https://resend.com), no card needed. Works immediately
+     from the shared `onboarding@resend.dev` address, but that address can only deliver to the
+     email on the Resend account itself — fine for one admin, not for several, until a real
+     domain is verified there (Resend dashboard → Domains) and `RESEND_FROM_EMAIL` is set to
+     it. Keep the key in `RESEND_API_KEY` either way — it's a harmless, ready-to-switch-to
+     fallback for once Nexora has a domain, even while Gmail is the active sender.
+8. Create your first Super Admin: in Supabase Auth, add a user (**check "Auto Confirm User"**
+   — an unconfirmed email can't receive a login code), then run the
+   `insert into public.users (...)` snippet at the bottom of
+   `supabase/migrations/0006_seed_policy_params.sql`, filling in that user's auth UUID.
+9. **Before go-live**, replace every `TODO` value in `0006_seed_policy_params.sql`
    (prime rate, penalty cap %, minimum living allowance, pilot volume/amount caps) with
    figures confirmed in writing with TMU — see SRS §10.2.
 
@@ -45,8 +61,8 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:3000 — you'll land on `/login`. First sign-in for any account walks
-through mandatory MFA enrolment (`/mfa-setup`) before reaching the console, per FR-CORE-03.
+Open http://localhost:3000 — you'll land on `/login`. Admin/super admin accounts get emailed
+a 6-digit code on every sign-in.
 
 ## 3. Tests
 
@@ -64,7 +80,7 @@ network-free TypeScript; no Supabase connection needed to run it.
 
 - Multi-tenant schema + RLS + audit log + document store + policy-parameter service
   (`supabase/migrations/`)
-- MFA-gated auth, role-based console shell
+- Email-based authentication for admin accounts, role-based console shell
 - Applicant intake with ID-number duplicate detection (tokenised, HMAC blind index)
 - Application intake: employment, credit history, bank details (tokenised), income/expenditure
   with live A–E–S computation

@@ -18,6 +18,7 @@ export async function requireStaff(): Promise<UserRow> {
 
   if (error || !staff) redirect("/login?error=no_staff_record");
   if (staff.status !== "active") redirect("/login?error=inactive_account");
+  if (staff.role === "borrower") redirect("/portal");
 
   return staff;
 }

@@ -1,0 +1,162 @@
+"use client";
+
+import { useActionState } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { registerBorrower, type AuthFormState } from "../actions";
+
+const initialState: AuthFormState = { status: "idle" };
+
+export default function BorrowerRegisterForm() {
+  const [state, formAction, pending] = useActionState(registerBorrower, initialState);
+
+  return (
+    <div className="w-full max-w-lg bg-white border border-slate-200 rounded-2xl shadow-sm p-8">
+      <div className="text-center mb-6">
+        <Image
+          src="/brand/nexora-logo-stacked.png"
+          alt="Nexora Systems"
+          width={80}
+          height={80}
+          className="mx-auto mb-2"
+          priority
+        />
+        <div className="inline-block px-2.5 py-0.5 rounded-full bg-teal-50 text-teal-700 text-xs font-semibold mb-2">
+          New Account Registration
+        </div>
+        <h1 className="text-2xl font-bold text-slate-900">Create Borrower Account</h1>
+        <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+          Connect your account with your TMU CashLoan CC records to track your application stage in real-time.
+        </p>
+      </div>
+
+      {state.status === "error" && (
+        <div className="mb-5 p-3.5 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700">
+          {state.message}
+        </div>
+      )}
+
+      <form action={formAction} className="space-y-4">
+        <div>
+          <label className="block text-xs font-semibold text-slate-700 mb-1">
+            Full Name (as on ID) *
+          </label>
+          <input
+            name="full_name"
+            type="text"
+            required
+            className="w-full px-3.5 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue"
+            placeholder="e.g. Johannes Shipanga"
+          />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              ID Type *
+            </label>
+            <select
+              name="id_type"
+              className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue bg-white"
+            >
+              <option value="personal_id">Namibian ID</option>
+              <option value="passport">Passport</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Identification Number *
+            </label>
+            <input
+              name="id_number"
+              type="text"
+              required
+              className="w-full px-3.5 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue"
+              placeholder="e.g. 85031200145"
+            />
+          </div>
+        </div>
+
+        <div className="bg-amber-50/70 border border-amber-200/60 rounded-lg p-2.5 text-[11px] text-amber-800">
+          💡 <strong>Tip:</strong> If you already applied at the TMU branch, please enter the exact ID number from your application so your loan records link automatically.
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Mobile Phone Number *
+            </label>
+            <input
+              name="mobile"
+              type="tel"
+              required
+              className="w-full px-3.5 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue"
+              placeholder="e.g. +264 81 123 4567"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Email Address *
+            </label>
+            <input
+              name="email"
+              type="email"
+              required
+              className="w-full px-3.5 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue"
+              placeholder="johannes@example.com"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Password *
+            </label>
+            <input
+              name="password"
+              type="password"
+              required
+              minLength={6}
+              className="w-full px-3.5 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue"
+              placeholder="••••••••"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Confirm Password *
+            </label>
+            <input
+              name="confirm_password"
+              type="password"
+              required
+              minLength={6}
+              className="w-full px-3.5 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue"
+              placeholder="••••••••"
+            />
+          </div>
+        </div>
+
+        <button
+          type="submit"
+          disabled={pending}
+          className="w-full py-2.5 px-4 rounded-lg bg-brand-navy hover:bg-slate-800 text-white font-medium text-sm transition disabled:opacity-50 shadow-sm mt-2"
+        >
+          {pending ? "Creating Account..." : "Create Account & View Status"}
+        </button>
+      </form>
+
+      <div className="mt-6 pt-5 border-t border-slate-100 text-center">
+        <p className="text-xs text-slate-600">
+          Already have an account?{" "}
+          <Link href="/portal/login" className="font-semibold text-brand-blue hover:underline">
+            Sign In
+          </Link>
+        </p>
+      </div>
+    </div>
+  );
+}

@@ -4,7 +4,7 @@
 // Row types are accurate; Insert/Update are intentionally loose (Partial<Row>) for build
 // velocity in this first pass — tighten once the UI's real write shapes have settled.
 
-export type StaffRole = "super_admin" | "admin" | "intake" | "officer" | "approver" | "finance";
+export type StaffRole = "super_admin" | "admin" | "intake" | "officer" | "approver" | "finance" | "borrower";
 export type PlatformRole = "super_admin" | "tenant_user";
 
 export type ApplicationStatus =
@@ -26,13 +26,13 @@ export type TenantRow = {
 export type UserRow = {
   id: string;
   tenant_id: string | null;
+  applicant_id?: string | null;
   email: string;
   full_name: string;
   phone: string | null;
   platform_role: PlatformRole;
   role: StaffRole;
   status: "active" | "inactive";
-  mfa_enrolled: boolean;
   created_at: string;
   updated_at: string;
 };

@@ -22,7 +22,7 @@ export default async function UsersPage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-xl font-semibold text-brand-navy">Staff & Roles</h1>
-        <p className="text-sm text-brand-muted">MFA is mandatory for every account, no exceptions (FR-CORE-03).</p>
+        <p className="text-sm text-brand-muted">Manage staff accounts and role assignments.</p>
       </div>
 
       <div className="bg-brand-surface border border-brand-border rounded-xl overflow-hidden">
@@ -32,7 +32,6 @@ export default async function UsersPage() {
               <th className="text-left px-4 py-3">Name</th>
               <th className="text-left px-4 py-3">Email</th>
               <th className="text-left px-4 py-3">Role</th>
-              <th className="text-left px-4 py-3">MFA</th>
               <th className="text-left px-4 py-3">Status</th>
               <th className="text-left px-4 py-3">Joined</th>
               <th className="text-left px-4 py-3"></th>
@@ -44,7 +43,6 @@ export default async function UsersPage() {
                 <td className="px-4 py-3 font-medium">{u.full_name}</td>
                 <td className="px-4 py-3">{u.email}</td>
                 <td className="px-4 py-3">{roleLabel(u.role)}</td>
-                <td className="px-4 py-3">{u.mfa_enrolled ? <span className="text-success">Enrolled</span> : <span className="text-warning">Pending</span>}</td>
                 <td className="px-4 py-3 capitalize">{u.status}</td>
                 <td className="px-4 py-3 text-brand-muted">{formatDate(u.created_at)}</td>
                 <td className="px-4 py-3">

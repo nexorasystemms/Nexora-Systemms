@@ -10,6 +10,7 @@ export const ROLE_TIER: Record<StaffRole, "super_admin" | "admin" | "user"> = {
   officer: "user",
   approver: "user",
   finance: "user",
+  borrower: "user",
 };
 
 export const ROLE_LABELS: Record<StaffRole, string> = {
@@ -19,7 +20,12 @@ export const ROLE_LABELS: Record<StaffRole, string> = {
   officer: "Loan Officer",
   approver: "Approver / Branch Manager",
   finance: "Finance / Disburser",
+  borrower: "Borrower / Applicant",
 };
+
+export function isBorrower(role: StaffRole): boolean {
+  return role === "borrower";
+}
 
 export function roleLabel(role: StaffRole): string {
   return ROLE_LABELS[role];
