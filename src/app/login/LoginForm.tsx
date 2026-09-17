@@ -7,6 +7,15 @@ import { createClient } from "@/lib/supabase/client";
 
 type Stage = "password" | "otp";
 
+// requireStaff()/requireRole() (src/lib/current-staff.ts) redirect here with these codes when
+// a signed-in Supabase Auth user isn't a usable staff account — surface them, or the person
+// just sees a blank login form again with no explanation of why they got bounced back to it.
+const ERROR_MESSAGES: Record<string, string> = {
+  no_staff_record: "That account isn't set up as staff yet. Contact an admin to be added.",
+  inactive_account: "This account has been deactivated. Contact an admin if that's unexpected.",
+  forbidden: "You don't have access to that page.",
+};
+
 export default function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -16,7 +25,9 @@ export default function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(
+    () => ERROR_MESSAGES[searchParams.get("error") ?? ""] ?? null,
+  );
   const [info, setInfo] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 

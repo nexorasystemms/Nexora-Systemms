@@ -43,14 +43,23 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (user && request.nextUrl.pathname === "/login") {
+  // The `error` check below matters: requireStaff()/requireRole() (src/lib/current-staff.ts)
+  // redirect a *signed-in* user back to /login?error=... when there's no matching public.users
+  // row, or it's inactive. Without this check, an authenticated-but-unprovisioned user bounces
+  // forever between "/" (requireStaff sends them to /login) and "/login" (this middleware sends
+  // them straight back to "/") — Chrome's own "Throttling navigation" protection is what a user
+  // actually sees when that happens, not a rendering bug.
+  if (user && request.nextUrl.pathname === "/login" && !request.nextUrl.searchParams.has("error")) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
     url.search = "";
     return NextResponse.redirect(url);
   }
 
-  if (user && (request.nextUrl.pathname === "/portal/login" || request.nextUrl.pathname === "/portal/register")) {
+  // /portal/register is deliberately excluded here — requireBorrower() (src/lib/current-borrower.ts)
+  // sends a signed-in user with no applicants row there, and bouncing them back out on every
+  // request would create the same infinite-redirect failure mode as above.
+  if (user && request.nextUrl.pathname === "/portal/login" && !request.nextUrl.searchParams.has("error")) {
     const url = request.nextUrl.clone();
     url.pathname = "/portal";
     url.search = "";
