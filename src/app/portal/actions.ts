@@ -45,6 +45,9 @@ export async function startBorrowerRegistration(_prev: ActionState, formData: Fo
   const { error: signUpError } = await supabase.auth.signUp({
     email: parsed.data.email,
     password: parsed.data.password,
+    options: {
+      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/portal/login`,
+    }
   });
   if (signUpError) {
     return { status: "error", message: signUpError.message };

@@ -42,7 +42,7 @@ export default async function AuditLogPage({
                 <td className="px-4 py-2 font-sans">{e.actor_type}{e.actor_id ? ` · ${e.actor_id.slice(0, 8)}` : ""}</td>
                 <td className="px-4 py-2 font-sans">{e.action}</td>
                 <td className="px-4 py-2 font-sans">{e.entity_type}{e.entity_id ? ` · ${e.entity_id.slice(0, 8)}` : ""}</td>
-                <td className="px-4 py-2 text-[10px] text-brand-muted">{e.record_hash.slice(0, 16)}…</td>
+                <td className="px-4 py-2 text-[10px] text-brand-muted">{e.record_hash ? `${e.record_hash.slice(0, 16)}…` : "—"}</td>
               </tr>
             ))}
             {!entries?.length && (

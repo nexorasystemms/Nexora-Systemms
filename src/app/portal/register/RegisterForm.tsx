@@ -25,7 +25,7 @@ export default function RegisterForm() {
       return;
     }
     setPendingFormData(formData);
-    setInfo(`We've emailed a 6-digit code to ${formData.get("email")}.`);
+    setInfo(`We've emailed an 8-digit code to ${formData.get("email")}.`);
     setStep("verify");
   }
 
@@ -40,8 +40,8 @@ export default function RegisterForm() {
       setError(result.message ?? "Could not verify that code.");
       return;
     }
-    router.push("/portal");
-    router.refresh();
+    // Redirect to login page after successful verification
+    router.push("/portal/login?verified=true");
   }
 
   async function handleResend() {
@@ -61,26 +61,29 @@ export default function RegisterForm() {
         </div>
         <form onSubmit={handleVerifySubmit} className="bg-brand-surface border border-brand-border rounded-xl shadow-sm p-8 space-y-4">
           <h1 className="text-lg font-semibold text-brand-navy mb-1">Verify your email</h1>
-          {info && <p className="text-sm text-brand-muted">{info}</p>}
+          <p className="text-sm text-brand-muted">
+            We've emailed an 8-digit code to <span className="font-medium">{String(pendingFormData.get("email") ?? "")}</span>.
+          </p>
 
+          {info && <p className="text-sm text-success">{info}</p>}
           {error && <div className="rounded-md bg-red-50 border border-red-200 text-danger px-4 py-3 text-sm">{error}</div>}
 
           <input
             type="text"
             inputMode="numeric"
             pattern="[0-9]*"
-            maxLength={6}
+            maxLength={8}
             required
             autoFocus
             value={code}
-            onChange={(e) => setCode(e.target.value)}
-            placeholder="6-digit code"
-            className="w-full rounded-md border border-brand-border px-3 py-2 text-center text-lg tracking-[0.5em] focus:outline-none focus:ring-2 focus:ring-brand-blue"
+            onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+            placeholder="Enter 8-digit code"
+            className="w-full rounded-md border border-brand-border px-3 py-2 text-center text-lg tracking-[0.35em] focus:outline-none focus:ring-2 focus:ring-brand-blue"
           />
 
           <button
             type="submit"
-            disabled={pending}
+            disabled={pending || code.length !== 8}
             className="w-full rounded-md bg-brand-navy text-white py-2 text-sm font-medium hover:bg-brand-navy-light transition disabled:opacity-50"
           >
             {pending ? "Verifying…" : "Verify & create account"}

@@ -10,6 +10,7 @@ export default function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = searchParams.get("next") ?? "/portal";
+  const verified = searchParams.get("verified") === "true";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -45,6 +46,12 @@ export default function LoginForm() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <h1 className="text-lg font-semibold text-brand-navy mb-1">Sign in</h1>
           <p className="text-sm text-brand-muted mb-4">Apply for and track your TMU CashLoan CC application.</p>
+
+          {verified && (
+            <div className="rounded-md bg-green-50 border border-green-200 text-green-800 px-4 py-3 text-sm">
+              ✓ Email verified! You can now sign in with your credentials.
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium mb-1" htmlFor="email">Email</label>
