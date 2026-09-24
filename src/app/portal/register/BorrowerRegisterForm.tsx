@@ -26,10 +26,13 @@ function BorrowerVerificationCard({ email, tempUserId, onBackToRegister }: Verif
   const [code, setCode] = useState("");
   const [resendCooldown, setResendCooldown] = useState(RESEND_COOLDOWN_SECONDS);
 
+  // Tick the resend cooldown from the clock; do not copy server-action results into state here.
   useEffect(() => {
     if (resendCooldown <= 0) return;
-    const timer = setInterval(() => setResendCooldown((s) => Math.max(0, s - 1)), 1000);
-    return () => clearInterval(timer);
+    const timer = setTimeout(() => {
+      setResendCooldown((seconds) => Math.max(0, seconds - 1));
+    }, 1000);
+    return () => clearTimeout(timer);
   }, [resendCooldown]);
 
   async function handleResendCode() {
@@ -138,8 +141,6 @@ export default function BorrowerRegisterForm() {
   const [email, setEmail] = useState("");
   const [isEditingRegistration, setIsEditingRegistration] = useState(false);
 
-  // Check if we should show verification - computed from state, not effect
-  // This avoids useEffect with setState calls that trigger ESLint react-hooks/set-state-in-effect
   const showVerification =
     registerState.status === "success" &&
     Boolean(registerState.tempUserId) &&
