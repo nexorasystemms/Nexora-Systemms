@@ -5,19 +5,18 @@ import { useEffect, useState } from "react";
 
 export default function WelcomeMessage() {
   const searchParams = useSearchParams();
-  const [message, setMessage] = useState<string | null>(null);
+  const [dismissed, setDismissed] = useState(false);
+
+  const isWelcome = searchParams.get("message") === "welcome";
 
   useEffect(() => {
-    const msg = searchParams.get("message");
-    if (msg === "welcome") {
-      setMessage("Welcome to TMU CashLoan CC! Your account has been successfully verified.");
-      // Clear the message after 10 seconds
-      const timer = setTimeout(() => setMessage(null), 10000);
-      return () => clearTimeout(timer);
-    }
-  }, [searchParams]);
+    if (!isWelcome) return;
+    // Clear the message after 10 seconds
+    const timer = setTimeout(() => setDismissed(true), 10000);
+    return () => clearTimeout(timer);
+  }, [isWelcome]);
 
-  if (!message) return null;
+  if (!isWelcome || dismissed) return null;
 
   return (
     <div className="mb-6 p-4 rounded-lg bg-green-50 border border-green-200">
@@ -28,12 +27,16 @@ export default function WelcomeMessage() {
           </div>
         </div>
         <div className="ml-3">
-          <p className="text-sm font-medium text-green-800">{message}</p>
+          <p className="text-sm font-medium text-green-800">
+            Welcome to TMU CashLoan CC! Your account has been successfully verified.
+          </p>
           <p className="text-xs text-green-600 mt-1">You can now apply for loans and track your applications.</p>
         </div>
         <button
-          onClick={() => setMessage(null)}
+          type="button"
+          onClick={() => setDismissed(true)}
           className="ml-auto text-green-400 hover:text-green-600 text-lg"
+          aria-label="Dismiss"
         >
           ×
         </button>
