@@ -1,0 +1,18 @@
+# Cloudflare Pages / Workers deployment configuration for Next.js
+# Note: Wrangler CLI primarily detects wrangler.toml. This configuration mirrors wrangler.toml.
+
+name = "nexora-systems"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+# Build configuration
+[build]
+command = "npm run pages:build"
+
+# Environment variables for Cloudflare Pages
+[env.production.vars]
+NODE_ENV = "production"
+
+# Deployment configuration
+[site]
+bucket = ".vercel/output/static"

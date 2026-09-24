@@ -1,0 +1,10 @@
+# Vercel deployment configuration for Next.js
+# Note: Vercel natively uses vercel.json. Both vercel.toml and vercel.json are provided.
+
+buildCommand = "npm run build"
+devCommand = "npm run dev"
+installCommand = "npm install"
+framework = "nextjs"
+
+[env]
+NODE_ENV = "production"
