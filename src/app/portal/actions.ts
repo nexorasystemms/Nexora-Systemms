@@ -163,6 +163,7 @@ export async function registerBorrower(
     const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
       type: "signup",
       email: data.email.trim().toLowerCase(),
+      password: data.password,
     });
 
     if (linkError || !linkData?.properties?.email_otp) {
@@ -194,8 +195,10 @@ export async function sendBorrowerVerificationCode(tempUserId: string): Promise<
   }
 
   try {
+    // The password isn't available on resend, so issue a magic-link OTP instead of a signup one;
+    // verifyBorrowerEmail checks with type "email", which accepts either.
     const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
-      type: "signup",
+      type: "magiclink",
       email: authUser.user.email,
     });
 
@@ -234,7 +237,7 @@ export async function verifyBorrowerEmail(
   const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
     email: authUser.user.email,
     token: verificationCode,
-    type: "signup",
+    type: "email",
   });
 
   if (verifyError || !verifyData.user) {

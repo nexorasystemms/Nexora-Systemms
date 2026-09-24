@@ -92,7 +92,7 @@ export default function BorrowerLoginForm() {
 
     const result = await sendBorrowerPasswordReset(email.trim().toLowerCase());
     if (!result.ok) {
-      setError(result.message);
+      setError(result.message ?? "Could not send the reset code.");
       setLoading(false);
       return;
     }
@@ -164,7 +164,7 @@ export default function BorrowerLoginForm() {
     if (result.ok) {
       setResendCooldown(RESEND_COOLDOWN_SECONDS);
     } else {
-      setError(result.message);
+      setError(result.message ?? "Could not send the reset code.");
     }
   }
 
@@ -253,7 +253,7 @@ export default function BorrowerLoginForm() {
       {stage === "forgot_password" && (
         <form onSubmit={handleForgotPasswordSubmit} className="space-y-4">
           <p className="text-xs text-slate-500 mb-4">
-            Enter your email address and we'll send you a code to reset your password.
+            Enter your email address and we&apos;ll send you a code to reset your password.
           </p>
 
           <div>

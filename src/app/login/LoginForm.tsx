@@ -307,7 +307,7 @@ export default function LoginForm() {
           <form onSubmit={handleForgotPasswordSubmit} className="space-y-4">
             <h1 className="text-lg font-semibold text-brand-navy mb-1">Reset password</h1>
             <p className="text-sm text-brand-muted mb-4">
-              Enter your email address and we'll send you a code to reset your password.
+              Enter your email address and we&apos;ll send you a code to reset your password.
             </p>
 
             <div>
