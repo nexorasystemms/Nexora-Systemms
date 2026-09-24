@@ -1,0 +1,7 @@
+# Cloudflare Pages redirects
+
+# SPA fallback for client-side routing
+/*    /index.html   200
+
+# API routes redirect to edge functions (if needed)
+/api/*  /.netlify/functions/:splat  200

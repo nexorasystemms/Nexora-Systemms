@@ -1,0 +1,18 @@
+# Cloudflare Pages configuration for Next.js
+name = "nexora-systems"
+compatibility_date = "2024-09-23"
+
+# Build configuration
+[build]
+command = "npm run pages:build"
+
+# Environment variables for Cloudflare Pages
+[env.production.vars]
+NODE_ENV = "production"
+
+# The rest of your environment variables should be added in the Cloudflare dashboard
+# under Settings > Environment variables
+
+# Deployment configuration
+[site]
+bucket = ".vercel/output/static"

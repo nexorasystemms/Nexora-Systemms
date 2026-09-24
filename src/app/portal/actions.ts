@@ -334,11 +334,6 @@ export async function verifyAndResetBorrowerPassword(
   return { ok: true };
 }
 
-export async function sendBorrowerVerificationEmail(to: string, code: string): Promise<void> {
-  // Use the same email sending function as admin login
-  await sendLoginCodeEmail(to, code);
-}
-
 export async function loginBorrower(
   _prev: AuthFormState,
   formData: FormData,
