@@ -138,11 +138,13 @@ export default function BorrowerRegisterForm() {
   const [email, setEmail] = useState("");
   const [isEditingRegistration, setIsEditingRegistration] = useState(false);
 
+  // Check if we should show verification - computed from state, not effect
   const showVerification =
     registerState.status === "success" &&
     Boolean(registerState.tempUserId) &&
     !isEditingRegistration;
 
+  // Conditionally render verification card
   if (showVerification && registerState.tempUserId) {
     return (
       <BorrowerVerificationCard
