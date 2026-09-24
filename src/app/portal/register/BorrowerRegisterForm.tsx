@@ -1,14 +1,58 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { registerBorrower, type AuthFormState } from "../actions";
+import { registerBorrower, sendBorrowerVerificationCode, verifyBorrowerEmail, type AuthFormState } from "../actions";
 
 const initialState: AuthFormState = { status: "idle" };
+type VerificationStage = "registration" | "email_verification";
+
+const RESEND_COOLDOWN_SECONDS = 30;
+
+function maskEmail(email: string): string {
+  const [local, domain] = email.split("@");
+  if (!local || !domain) return email;
+  const visible = local.slice(0, Math.min(2, local.length));
+  return `${visible}${"*".repeat(Math.max(local.length - visible.length, 1))}@${domain}`;
+}
 
 export default function BorrowerRegisterForm() {
-  const [state, formAction, pending] = useActionState(registerBorrower, initialState);
+  const [registerState, registerAction, registerPending] = useActionState(registerBorrower, initialState);
+  const [verifyState, verifyAction, verifyPending] = useActionState(verifyBorrowerEmail, initialState);
+  
+  const [stage, setStage] = useState<VerificationStage>("registration");
+  const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
+  const [tempUserId, setTempUserId] = useState<string | null>(null);
+  const [resendCooldown, setResendCooldown] = useState(0);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setInterval(() => setResendCooldown((s) => Math.max(0, s - 1)), 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
+
+  // Handle successful registration - move to verification stage
+  useEffect(() => {
+    if (registerState.status === "success" && registerState.tempUserId) {
+      setTempUserId(registerState.tempUserId);
+      setStage("email_verification");
+      setResendCooldown(RESEND_COOLDOWN_SECONDS);
+    }
+  }, [registerState]);
+
+  async function handleResendCode() {
+    if (resendCooldown > 0 || !tempUserId) return;
+    
+    const result = await sendBorrowerVerificationCode(tempUserId);
+    if (result.ok) {
+      setResendCooldown(RESEND_COOLDOWN_SECONDS);
+    }
+  }
+
+  const state = stage === "registration" ? registerState : verifyState;
+  const pending = stage === "registration" ? registerPending : verifyPending;
 
   return (
     <div className="w-full max-w-lg bg-white border border-slate-200 rounded-2xl shadow-sm p-8">
@@ -22,11 +66,16 @@ export default function BorrowerRegisterForm() {
           priority
         />
         <div className="inline-block px-2.5 py-0.5 rounded-full bg-teal-50 text-teal-700 text-xs font-semibold mb-2">
-          New Account Registration
+          {stage === "registration" ? "New Account Registration" : "Email Verification"}
         </div>
-        <h1 className="text-2xl font-bold text-slate-900">Create Borrower Account</h1>
+        <h1 className="text-2xl font-bold text-slate-900">
+          {stage === "registration" ? "Create Borrower Account" : "Verify Your Email"}
+        </h1>
         <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-          Connect your account with your TMU CashLoan CC records to track your application stage in real-time.
+          {stage === "registration" 
+            ? "Connect your account with your TMU CashLoan CC records to track your application stage in real-time."
+            : `We sent a verification code to ${maskEmail(email)}. Enter the code below to complete your registration.`
+          }
         </p>
       </div>
 
@@ -36,118 +85,184 @@ export default function BorrowerRegisterForm() {
         </div>
       )}
 
-      <form action={formAction} className="space-y-4">
-        <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1">
-            Full Name (as on ID) *
-          </label>
-          <input
-            name="full_name"
-            type="text"
-            required
-            className="w-full px-3.5 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue"
-            placeholder="e.g. Johannes Shipanga"
-          />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      {stage === "registration" ? (
+        <form 
+          action={(formData: FormData) => {
+            const emailValue = formData.get("email") as string;
+            setEmail(emailValue);
+            registerAction(formData);
+          }} 
+          className="space-y-4"
+        >
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">
-              ID Type *
-            </label>
-            <select
-              name="id_type"
-              className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue bg-white"
-            >
-              <option value="personal_id">Namibian ID</option>
-              <option value="passport">Passport</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Identification Number *
+              Full Name (as on ID) *
             </label>
             <input
-              name="id_number"
+              name="full_name"
               type="text"
               required
               className="w-full px-3.5 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue"
-              placeholder="e.g. 85031200145"
-            />
-          </div>
-        </div>
-
-        <div className="bg-amber-50/70 border border-amber-200/60 rounded-lg p-2.5 text-[11px] text-amber-800">
-          💡 <strong>Tip:</strong> If you already applied at the TMU branch, please enter the exact ID number from your application so your loan records link automatically.
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Mobile Phone Number *
-            </label>
-            <input
-              name="mobile"
-              type="tel"
-              required
-              className="w-full px-3.5 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue"
-              placeholder="e.g. +264 81 123 4567"
+              placeholder="e.g. Johannes Shipanga"
             />
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Email Address *
-            </label>
-            <input
-              name="email"
-              type="email"
-              required
-              className="w-full px-3.5 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue"
-              placeholder="johannes@example.com"
-            />
-          </div>
-        </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                ID Type *
+              </label>
+              <select
+                name="id_type"
+                className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue bg-white"
+              >
+                <option value="personal_id">Namibian ID</option>
+                <option value="passport">Passport</option>
+              </select>
+            </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Password *
-            </label>
-            <input
-              name="password"
-              type="password"
-              required
-              minLength={6}
-              className="w-full px-3.5 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue"
-              placeholder="••••••••"
-            />
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Identification Number *
+              </label>
+              <input
+                name="id_number"
+                type="text"
+                required
+                className="w-full px-3.5 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue"
+                placeholder="e.g. 85031200145"
+              />
+            </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Confirm Password *
-            </label>
-            <input
-              name="confirm_password"
-              type="password"
-              required
-              minLength={6}
-              className="w-full px-3.5 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue"
-              placeholder="••••••••"
-            />
+          <div className="bg-amber-50/70 border border-amber-200/60 rounded-lg p-2.5 text-[11px] text-amber-800">
+            💡 <strong>Tip:</strong> If you already applied at the TMU branch, please enter the exact ID number from your application so your loan records link automatically.
           </div>
-        </div>
 
-        <button
-          type="submit"
-          disabled={pending}
-          className="w-full py-2.5 px-4 rounded-lg bg-brand-navy hover:bg-slate-800 text-white font-medium text-sm transition disabled:opacity-50 shadow-sm mt-2"
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Mobile Phone Number *
+              </label>
+              <input
+                name="mobile"
+                type="tel"
+                required
+                className="w-full px-3.5 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue"
+                placeholder="e.g. +264 81 123 4567"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Email Address *
+              </label>
+              <input
+                name="email"
+                type="email"
+                required
+                className="w-full px-3.5 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue"
+                placeholder="johannes@example.com"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Password *
+              </label>
+              <input
+                name="password"
+                type="password"
+                required
+                minLength={6}
+                className="w-full px-3.5 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue"
+                placeholder="••••••••"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Confirm Password *
+              </label>
+              <input
+                name="confirm_password"
+                type="password"
+                required
+                minLength={6}
+                className="w-full px-3.5 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue"
+                placeholder="••••••••"
+              />
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={pending}
+            className="w-full py-2.5 px-4 rounded-lg bg-brand-navy hover:bg-slate-800 text-white font-medium text-sm transition disabled:opacity-50 shadow-sm mt-2"
+          >
+            {pending ? "Creating Account..." : "Create Account"}
+          </button>
+        </form>
+      ) : (
+        <form 
+          action={(formData: FormData) => {
+            formData.set("temp_user_id", tempUserId || "");
+            verifyAction(formData);
+          }}
+          className="space-y-4"
         >
-          {pending ? "Creating Account..." : "Create Account & View Status"}
-        </button>
-      </form>
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Verification Code
+            </label>
+            <input
+              name="verification_code"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={8}
+              required
+              autoFocus
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+              className="w-full px-3.5 py-2 rounded-lg border border-slate-300 text-sm text-center tracking-widest focus:outline-none focus:ring-2 focus:ring-brand-blue"
+              placeholder="Enter 8-digit code"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={verifyPending || code.length !== 8}
+            className="w-full py-2.5 px-4 rounded-lg bg-brand-navy hover:bg-slate-800 text-white font-medium text-sm transition disabled:opacity-50 shadow-sm"
+          >
+            {verifyPending ? "Verifying..." : "Verify Email & Complete Registration"}
+          </button>
+
+          <div className="flex items-center justify-between text-xs text-slate-600">
+            <button
+              type="button"
+              onClick={handleResendCode}
+              disabled={resendCooldown > 0}
+              className="text-brand-blue hover:underline disabled:text-slate-400 disabled:no-underline disabled:cursor-not-allowed"
+            >
+              {resendCooldown > 0 ? `Resend code (${resendCooldown}s)` : "Resend code"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setStage("registration");
+                setCode("");
+                setTempUserId(null);
+              }}
+              className="hover:underline"
+            >
+              Change email address
+            </button>
+          </div>
+        </form>
+      )}
 
       <div className="mt-6 pt-5 border-t border-slate-100 text-center">
         <p className="text-xs text-slate-600">

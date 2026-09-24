@@ -7,6 +7,7 @@ import { createHash } from "crypto";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireBorrower } from "@/lib/current-borrower";
+import { sendLoginCodeEmail, sendPasswordResetEmail } from "@/lib/email/send";
 
 const registerSchema = z.object({
   full_name: z.string().min(2, "Full name is required (at least 2 characters)"),
@@ -24,6 +25,7 @@ const registerSchema = z.object({
 export type AuthFormState = {
   status: "idle" | "error" | "success";
   message?: string;
+  tempUserId?: string; // For email verification flow
 };
 
 export async function registerBorrower(
@@ -42,7 +44,6 @@ export async function registerBorrower(
 
   const data = parsed.data;
   const admin = createAdminClient();
-  const supabase = await createClient();
 
   // Find default active tenant (e.g. TMU CashLoan CC)
   const { data: tenant } = await admin
@@ -118,14 +119,16 @@ export async function registerBorrower(
     applicantId = newApplicant.id;
   }
 
-  // 3. Create Auth User in Supabase Auth
+  // 3. Create Auth User in Supabase Auth (email_confirm: false to require verification)
   const { data: authData, error: authError } = await admin.auth.admin.createUser({
     email: data.email.trim().toLowerCase(),
     password: data.password,
-    email_confirm: true,
+    email_confirm: false, // Require email verification
     user_metadata: {
       role: "borrower",
       full_name: data.full_name.trim(),
+      tenant_id: tenant.id,
+      applicant_id: applicantId,
     },
   });
 
@@ -136,7 +139,7 @@ export async function registerBorrower(
     return { status: "error", message: authError?.message ?? "Could not create user credentials." };
   }
 
-  // 4. Create Public User Profile
+  // 4. Store user profile data to be activated after email verification
   const { error: userInsertError } = await admin.from("users").insert({
     id: authData.user.id,
     tenant_id: tenant.id,
@@ -146,7 +149,7 @@ export async function registerBorrower(
     phone: data.mobile.trim(),
     platform_role: "tenant_user",
     role: "borrower",
-    status: "active",
+    status: "inactive", // Inactive until email verified
   });
 
   if (userInsertError) {
@@ -155,17 +158,185 @@ export async function registerBorrower(
     return { status: "error", message: userInsertError.message };
   }
 
-  // 5. Sign in the newly created borrower
-  const { error: signInError } = await supabase.auth.signInWithPassword({
-    email: data.email.trim().toLowerCase(),
-    password: data.password,
-  });
+  // 5. Send verification email
+  try {
+    const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
+      type: "signup",
+      email: data.email.trim().toLowerCase(),
+    });
 
-  if (signInError) {
-    return { status: "error", message: "Account created successfully, but automatic login failed. Please log in." };
+    if (linkError || !linkData?.properties?.email_otp) {
+      await admin.auth.admin.deleteUser(authData.user.id);
+      return { status: "error", message: "Could not generate verification code." };
+    }
+
+    await sendBorrowerVerificationEmail(data.email.trim().toLowerCase(), linkData.properties.email_otp);
+  } catch (err) {
+    await admin.auth.admin.deleteUser(authData.user.id);
+    return { status: "error", message: "Could not send verification email." };
   }
 
-  redirect("/portal");
+  return { 
+    status: "success", 
+    message: "Account created! Please check your email for a verification code.",
+    tempUserId: authData.user.id
+  };
+}
+
+// Email verification functions for borrower registration
+export async function sendBorrowerVerificationCode(tempUserId: string): Promise<{ ok: boolean; message?: string }> {
+  const admin = createAdminClient();
+  
+  // Get user data
+  const { data: authUser, error: userError } = await admin.auth.admin.getUserById(tempUserId);
+  if (userError || !authUser.user?.email) {
+    return { ok: false, message: "User not found" };
+  }
+
+  try {
+    const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
+      type: "signup",
+      email: authUser.user.email,
+    });
+
+    if (linkError || !linkData?.properties?.email_otp) {
+      return { ok: false, message: "Could not generate verification code" };
+    }
+
+    await sendBorrowerVerificationEmail(authUser.user.email, linkData.properties.email_otp);
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, message: "Could not send verification email" };
+  }
+}
+
+export async function verifyBorrowerEmail(
+  _prev: AuthFormState,
+  formData: FormData,
+): Promise<AuthFormState> {
+  const tempUserId = String(formData.get("temp_user_id") ?? "");
+  const verificationCode = String(formData.get("verification_code") ?? "");
+
+  if (!tempUserId || !verificationCode) {
+    return { status: "error", message: "Missing verification information" };
+  }
+
+  const admin = createAdminClient();
+  const supabase = await createClient();
+
+  // Get user data
+  const { data: authUser, error: userError } = await admin.auth.admin.getUserById(tempUserId);
+  if (userError || !authUser.user?.email) {
+    return { status: "error", message: "Invalid verification session" };
+  }
+
+  // Verify the OTP code
+  const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
+    email: authUser.user.email,
+    token: verificationCode,
+    type: "signup",
+  });
+
+  if (verifyError || !verifyData.user) {
+    return { status: "error", message: "Invalid or expired verification code" };
+  }
+
+  // Activate the user account
+  const { error: updateError } = await admin
+    .from("users")
+    .update({ status: "active" })
+    .eq("id", tempUserId);
+
+  if (updateError) {
+    return { status: "error", message: "Could not activate account" };
+  }
+
+  // The verification already signs the user in automatically
+  redirect("/portal?message=welcome");
+}
+
+async function sendBorrowerVerificationEmail(to: string, code: string): Promise<void> {
+  // Use the same email sending function as admin login
+  await sendLoginCodeEmail(to, code);
+}
+
+export async function sendBorrowerPasswordReset(email: string): Promise<{ ok: boolean; message?: string }> {
+  const admin = createAdminClient();
+
+  // Verify this is a valid borrower
+  const { data: userProfile, error: profileError } = await admin
+    .from("users")
+    .select("id, role, status")
+    .eq("email", email.trim().toLowerCase())
+    .eq("role", "borrower")
+    .maybeSingle();
+
+  if (profileError || !userProfile) {
+    return { ok: false, message: "No borrower account found with this email address." };
+  }
+
+  if (userProfile.status !== "active") {
+    return { ok: false, message: "Please verify your email address first. Check your inbox for a verification code." };
+  }
+
+  // Generate password reset link with OTP
+  const { data, error } = await admin.auth.admin.generateLink({
+    type: "recovery",
+    email: email.trim().toLowerCase(),
+  });
+
+  if (error || !data?.properties?.email_otp) {
+    return { ok: false, message: "Could not generate password reset code." };
+  }
+
+  try {
+    await sendPasswordResetEmail(email.trim().toLowerCase(), data.properties.email_otp);
+  } catch (err) {
+    return { ok: false, message: "Could not send the reset email." };
+  }
+
+  return { ok: true };
+}
+
+export async function verifyAndResetBorrowerPassword(
+  email: string,
+  code: string,
+  newPassword: string,
+): Promise<{ ok: boolean; message?: string }> {
+  const supabase = await createClient();
+  const admin = createAdminClient();
+
+  // Get the user
+  const { data: { user: authUser }, error: authError } = await supabase.auth.admin.getUserById(
+    (await supabase.auth.getUser()).data.user?.id || "",
+  );
+
+  // Verify the recovery code
+  const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
+    email: email.trim().toLowerCase(),
+    token: code,
+    type: "recovery",
+  });
+
+  if (verifyError || !verifyData.user) {
+    return { ok: false, message: "Invalid or expired password reset code." };
+  }
+
+  // Update password
+  const { error: updateError } = await supabase.auth.admin.updateUserById(verifyData.user.id, {
+    password: newPassword,
+  });
+
+  if (updateError) {
+    return { ok: false, message: "Could not update password. Please try again." };
+  }
+
+  return { ok: true };
+}
+
+export async function sendBorrowerVerificationEmail(to: string, code: string): Promise<void> {
+  // Use the same email sending function as admin login
+  await sendLoginCodeEmail(to, code);
 }
 
 export async function loginBorrower(
@@ -200,7 +371,7 @@ export async function loginBorrower(
 
   if (profile.status !== "active") {
     await supabase.auth.signOut();
-    return { status: "error", message: "Your account is inactive. Please contact TMU CashLoan CC." };
+    return { status: "error", message: "Your email address has not been verified yet. Please check your email." };
   }
 
   if (profile.role !== "borrower") {

@@ -1,6 +1,6 @@
 import "server-only";
 import nodemailer, { type Transporter } from "nodemailer";
-import { loginCodeEmail } from "./login-code-template";
+import { loginCodeEmail, passwordResetEmail } from "./login-code-template";
 
 let transporter: Transporter | null = null;
 
@@ -23,8 +23,9 @@ function getTransporter(): Transporter {
   return transporter;
 }
 
-export async function sendViaGmail(to: string, code: string) {
-  const { subject, text, html } = loginCodeEmail(code);
+export async function sendViaGmail(to: string, code: string, type: "login" | "password_reset" = "login") {
+  const emailTemplate = type === "password_reset" ? passwordResetEmail(code) : loginCodeEmail(code);
+  const { subject, text, html } = emailTemplate;
   const from = process.env.GMAIL_USER!;
   await getTransporter().sendMail({ from: `Nexora Systems <${from}>`, to, subject, text, html });
 }

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { requireBorrower } from "@/lib/current-borrower";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type {
@@ -14,6 +15,7 @@ import StageTracker from "./StageTracker";
 import BorrowerDocumentsCard from "./BorrowerDocumentsCard";
 import AgreementCard from "./AgreementCard";
 import RepaymentScheduleCard from "./RepaymentScheduleCard";
+import WelcomeMessage from "./WelcomeMessage";
 
 export const metadata = {
   title: "Dashboard — TMU CashLoan CC Borrower Portal",
@@ -136,6 +138,11 @@ export default async function BorrowerPortalPage() {
 
   return (
     <div className="space-y-6">
+      {/* Welcome Message (if any) */}
+      <Suspense fallback={null}>
+        <WelcomeMessage />
+      </Suspense>
+      
       {/* Top Welcome Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2">
         <div>

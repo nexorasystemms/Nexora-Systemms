@@ -5,9 +5,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import { isAdminTier } from "@/lib/roles";
-import { sendAdminLoginCode } from "./actions";
+import { sendAdminLoginCode, sendAdminPasswordReset } from "./actions";
 
-type Stage = "password" | "email_otp";
+type Stage = "password" | "email_otp" | "forgot_password" | "reset_code" | "new_password";
 
 const RESEND_COOLDOWN_SECONDS = 30;
 
@@ -26,6 +26,8 @@ export default function LoginForm() {
   const [stage, setStage] = useState<Stage>("password");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -109,6 +111,76 @@ export default function LoginForm() {
     router.refresh();
   }
 
+  async function handleForgotPasswordSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+
+    const result = await sendAdminPasswordReset(email);
+    if (!result.ok) {
+      setError(result.message);
+      setLoading(false);
+      return;
+    }
+
+    setStage("reset_code");
+    setCode("");
+    setLoading(false);
+  }
+
+  async function handleResetCodeSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+
+    if (newPassword !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      setError("Password must be at least 6 characters.");
+      return;
+    }
+
+    setLoading(true);
+    const supabase = createClient();
+
+    // Verify the code and set new password
+    const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
+      email,
+      token: code,
+      type: "recovery",
+    });
+
+    if (verifyError || !verifyData.user) {
+      setError("Invalid or expired password reset code.");
+      setLoading(false);
+      return;
+    }
+
+    // Update password using the authenticated session
+    const { error: updateError } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+
+    if (updateError) {
+      setError(updateError.message);
+      setLoading(false);
+      return;
+    }
+
+    // Sign out and go back to login
+    await supabase.auth.signOut();
+    setError(null);
+    setStage("password");
+    setEmail("");
+    setPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setCode("");
+    setLoading(false);
+  }
+
   async function handleResend() {
     if (resendCooldown > 0) return;
     setError(null);
@@ -161,6 +233,18 @@ export default function LoginForm() {
               className="w-full rounded-md bg-brand-navy text-white py-2 text-sm font-medium hover:bg-brand-navy-light transition disabled:opacity-50"
             >
               {loading ? "Signing in…" : "Sign in"}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setStage("forgot_password");
+                setError(null);
+                setEmail("");
+              }}
+              className="w-full text-sm text-brand-blue hover:underline"
+            >
+              Forgot password?
             </button>
           </form>
         )}
@@ -216,6 +300,124 @@ export default function LoginForm() {
                 Use a different account
               </button>
             </div>
+          </form>
+        )}
+
+        {stage === "forgot_password" && (
+          <form onSubmit={handleForgotPasswordSubmit} className="space-y-4">
+            <h1 className="text-lg font-semibold text-brand-navy mb-1">Reset password</h1>
+            <p className="text-sm text-brand-muted mb-4">
+              Enter your email address and we'll send you a code to reset your password.
+            </p>
+
+            <div>
+              <label className="block text-sm font-medium mb-1" htmlFor="forgot-email">Email</label>
+              <input
+                id="forgot-email"
+                type="email"
+                required
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full rounded-md border border-brand-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue"
+                placeholder="name@example.com"
+              />
+            </div>
+
+            {error && <p className="text-sm text-danger">{error}</p>}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full rounded-md bg-brand-navy text-white py-2 text-sm font-medium hover:bg-brand-navy-light transition disabled:opacity-50"
+            >
+              {loading ? "Sending code…" : "Send reset code"}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setStage("password");
+                setError(null);
+                setEmail("");
+              }}
+              className="w-full text-sm text-brand-blue hover:underline"
+            >
+              Back to sign in
+            </button>
+          </form>
+        )}
+
+        {stage === "reset_code" && (
+          <form onSubmit={handleResetCodeSubmit} className="space-y-4">
+            <h1 className="text-lg font-semibold text-brand-navy mb-1">Enter reset code</h1>
+            <p className="text-sm text-brand-muted mb-4">
+              We sent a code to <span className="font-medium">{maskEmail(email)}</span>. Enter it below and create a new password.
+            </p>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Verification code</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={8}
+                required
+                autoFocus
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+                className="w-full rounded-md border border-brand-border px-3 py-2 text-center text-lg tracking-widest focus:outline-none focus:ring-2 focus:ring-brand-blue"
+                placeholder="Enter 8-digit code"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">New password</label>
+              <input
+                type="password"
+                required
+                minLength={6}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="w-full rounded-md border border-brand-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue"
+                placeholder="••••••••"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Confirm password</label>
+              <input
+                type="password"
+                required
+                minLength={6}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full rounded-md border border-brand-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue"
+                placeholder="••••••••"
+              />
+            </div>
+
+            {error && <p className="text-sm text-danger">{error}</p>}
+
+            <button
+              type="submit"
+              disabled={loading || code.length !== 8}
+              className="w-full rounded-md bg-brand-navy text-white py-2 text-sm font-medium hover:bg-brand-navy-light transition disabled:opacity-50"
+            >
+              {loading ? "Resetting…" : "Reset password"}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setStage("forgot_password");
+                setCode("");
+                setError(null);
+              }}
+              className="w-full text-sm text-brand-blue hover:underline"
+            >
+              Back
+            </button>
           </form>
         )}
       </div>

@@ -31,10 +31,10 @@ export default function StageTracker({
 }: StageTrackerProps) {
   // Determine current active step (1 to 5)
   let currentStep = 1;
-  let isDeclined = status === "declined";
-  let isAwaitingDocs = status === "awaiting_documents";
-  let isSettled = status === "settled";
-  let isInArrears = status === "in_arrears";
+  const isDeclined = status === "declined";
+  const isAwaitingDocs = status === "awaiting_documents";
+  const isSettled = status === "settled";
+  const isInArrears = status === "in_arrears";
 
   switch (status) {
     case "draft":

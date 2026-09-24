@@ -63,7 +63,7 @@ export default async function NewApplicationPage({
               ))
             ) : (
               <div className="p-4 text-center text-xs text-slate-400">
-                No applicants found. Click "+ Register New Applicant" above to create one.
+                No applicants found. Click &ldquo;+ Register New Applicant&rdquo; above to create one.
               </div>
             )}
           </div>

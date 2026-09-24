@@ -1,6 +1,6 @@
 import "server-only";
 import { Resend } from "resend";
-import { loginCodeEmail } from "./login-code-template";
+import { loginCodeEmail, passwordResetEmail } from "./login-code-template";
 
 let client: Resend | null = null;
 
@@ -19,8 +19,9 @@ function getClient(): Resend {
 // RESEND_FROM_EMAIL before this can email codes to any admin other than that one account.
 const FROM = process.env.RESEND_FROM_EMAIL || "Nexora Systems <onboarding@resend.dev>";
 
-export async function sendViaResend(to: string, code: string) {
-  const { subject, text, html } = loginCodeEmail(code);
+export async function sendViaResend(to: string, code: string, type: "login" | "password_reset" = "login") {
+  const emailTemplate = type === "password_reset" ? passwordResetEmail(code) : loginCodeEmail(code);
+  const { subject, text, html } = emailTemplate;
   const { error } = await getClient().emails.send({ from: FROM, to, subject, text, html });
   if (error) throw new Error(error.message);
 }
