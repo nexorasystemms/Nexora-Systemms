@@ -139,6 +139,7 @@ export default function BorrowerRegisterForm() {
   const [isEditingRegistration, setIsEditingRegistration] = useState(false);
 
   // Check if we should show verification - computed from state, not effect
+  // This avoids useEffect with setState calls that trigger ESLint react-hooks/set-state-in-effect
   const showVerification =
     registerState.status === "success" &&
     Boolean(registerState.tempUserId) &&
