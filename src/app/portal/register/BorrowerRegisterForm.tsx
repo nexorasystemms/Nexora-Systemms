@@ -33,26 +33,29 @@ export default function BorrowerRegisterForm() {
     return () => clearInterval(timer);
   }, [resendCooldown]);
 
-  // Handle successful registration - move to verification stage
+  // Check for successful registration without using useEffect for state updates
+  const isRegistrationSuccessful = registerState.status === "success" && registerState.tempUserId;
+  const currentStage = isRegistrationSuccessful ? "email_verification" : stage;
+  const currentTempUserId = isRegistrationSuccessful ? registerState.tempUserId : tempUserId;
+
+  // Set cooldown when moving to verification stage
   useEffect(() => {
-    if (registerState.status === "success" && registerState.tempUserId) {
-      setTempUserId(registerState.tempUserId);
-      setStage("email_verification");
+    if (isRegistrationSuccessful && resendCooldown === 0) {
       setResendCooldown(RESEND_COOLDOWN_SECONDS);
     }
-  }, [registerState]);
+  }, [isRegistrationSuccessful, resendCooldown]);
 
   async function handleResendCode() {
-    if (resendCooldown > 0 || !tempUserId) return;
+    if (resendCooldown > 0 || !currentTempUserId) return;
     
-    const result = await sendBorrowerVerificationCode(tempUserId);
+    const result = await sendBorrowerVerificationCode(currentTempUserId);
     if (result.ok) {
       setResendCooldown(RESEND_COOLDOWN_SECONDS);
     }
   }
 
-  const state = stage === "registration" ? registerState : verifyState;
-  const pending = stage === "registration" ? registerPending : verifyPending;
+  const state = currentStage === "registration" ? registerState : verifyState;
+  const pending = currentStage === "registration" ? registerPending : verifyPending;
 
   return (
     <div className="w-full max-w-lg bg-white border border-slate-200 rounded-2xl shadow-sm p-8">
@@ -66,13 +69,13 @@ export default function BorrowerRegisterForm() {
           priority
         />
         <div className="inline-block px-2.5 py-0.5 rounded-full bg-teal-50 text-teal-700 text-xs font-semibold mb-2">
-          {stage === "registration" ? "New Account Registration" : "Email Verification"}
+          {currentStage === "registration" ? "New Account Registration" : "Email Verification"}
         </div>
         <h1 className="text-2xl font-bold text-slate-900">
-          {stage === "registration" ? "Create Borrower Account" : "Verify Your Email"}
+          {currentStage === "registration" ? "Create Borrower Account" : "Verify Your Email"}
         </h1>
         <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-          {stage === "registration" 
+          {currentStage === "registration" 
             ? "Connect your account with your TMU CashLoan CC records to track your application stage in real-time."
             : `We sent a verification code to ${maskEmail(email)}. Enter the code below to complete your registration.`
           }
@@ -85,7 +88,7 @@ export default function BorrowerRegisterForm() {
         </div>
       )}
 
-      {stage === "registration" ? (
+      {currentStage === "registration" ? (
         <form 
           action={(formData: FormData) => {
             const emailValue = formData.get("email") as string;
@@ -208,7 +211,7 @@ export default function BorrowerRegisterForm() {
       ) : (
         <form 
           action={(formData: FormData) => {
-            formData.set("temp_user_id", tempUserId || "");
+            formData.set("temp_user_id", currentTempUserId || "");
             verifyAction(formData);
           }}
           className="space-y-4"
