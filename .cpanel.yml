@@ -1,0 +1,11 @@
+---
+# cPanel Git Version Control (Namecheap Stellar Plus).
+# Clone this repo OUTSIDE the document root, then Deploy HEAD Commit.
+# Live files must be the Vite `dist/` output, never the source tree
+# (source index.html points at /src/main.tsx and shows a blank page).
+#
+# Document root: addon domain folder (cPanel → Domains). Override with
+# CPANEL_DEPLOYPATH in $HOME/.nexora.env if yours is public_html instead.
+deployment:
+  tasks:
+    - /bin/bash ./scripts/cpanel-deploy.sh
