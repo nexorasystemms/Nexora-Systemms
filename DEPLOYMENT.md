@@ -54,17 +54,16 @@ npm run build:static
 Required environment variables:
 
 ```
-# Supabase Configuration
-NEXT_PUBLIC_SUPABASE_URL=your-project-url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+# Public Vite vars only (safe to expose in the browser bundle)
+VITE_SUPABASE_URL=
+VITE_SUPABASE_ANON_KEY=
 
-# Email Configuration (for Edge Functions)
-CUSTOM_SMTP_HOST=smtp.gmail.com
+# Server-only: set on Supabase Edge Functions, never prefix with VITE_
+CUSTOM_SMTP_HOST=
 CUSTOM_SMTP_PORT=587
-CUSTOM_SMTP_USER=your-email@gmail.com
-CUSTOM_SMTP_PASS=your-app-password
-CUSTOM_SMTP_FROM=your-from-email@domain.com
+CUSTOM_SMTP_USER=
+CUSTOM_SMTP_PASSWORD=
+CUSTOM_SMTP_FROM=
 ```
 
 ## Supabase Edge Functions Deployment

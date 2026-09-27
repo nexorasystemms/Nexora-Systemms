@@ -1,27 +1,22 @@
-# Gmail SMTP Setup Guide
+# Gmail SMTP setup (Supabase Edge Functions)
 
-## Step 1: Enable 2-Step Verification
-1. Go to [Google Account Settings](https://myaccount.google.com/)
-2. Click **Security** in the left sidebar
-3. Under "Signing in to Google", click **2-Step Verification**
-4. Follow the setup process if not already enabled
+Use this only as a server-side secret store (Supabase function secrets). Do not add these to Vite or prefix them with `VITE_`.
 
-## Step 2: Generate App Password
-1. In Google Account Settings → Security
-2. Under "Signing in to Google", click **App passwords**
-3. Select **Mail** from the dropdown
-4. Click **Generate**
-5. **Copy the 16-character password** (format: xxxx xxxx xxxx xxxx)
+## 1. Enable 2-Step Verification
 
-## Step 3: Update .env.local
-Add these lines to your .env.local file:
+In [Google Account Settings](https://myaccount.google.com/) → Security → 2-Step Verification.
+
+## 2. Create an app password
+
+Security → App passwords → Mail → Generate.
+
+## 3. Store secrets outside the repo
+
+Put values in `.env.local` locally (gitignored) and in Supabase secrets for production:
 
 ```env
-GMAIL_USER=mubianasaya@gmail.com
-GMAIL_APP_PASSWORD=your_16_character_password_here
+GMAIL_USER=your-email@gmail.com
+GMAIL_APP_PASSWORD=
 ```
 
-## Step 4: Test Gmail SMTP
-Run: `node test-gmail.js`
-
-The system will automatically use Gmail if both variables are set, falling back to Zoho if Gmail fails.
+Do not commit the app password or paste it into docs.
