@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { User } from '@supabase/supabase-js'
-import { createClient } from '@/lib/supabase/client'
+import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
+import MissingConfigScreen from '@/components/MissingConfigScreen'
 import type { StaffRole } from '@/types/database'
 
 interface AuthUser extends User {
@@ -24,9 +25,15 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(true)
-  const supabase = createClient()
+  const configured = isSupabaseConfigured()
+  const supabase = configured ? createClient() : null
 
   useEffect(() => {
+    if (!supabase) {
+      setLoading(false)
+      return
+    }
+
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
@@ -47,9 +54,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })
 
     return () => subscription.unsubscribe()
-  }, [])
+  }, [supabase])
 
   async function loadUserProfile(authUser: User) {
+    if (!supabase) return
     try {
       const { data: profile } = await supabase
         .from('users')
@@ -77,6 +85,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const signIn = async (email: string, password: string) => {
+    if (!supabase) {
+      return { error: 'Supabase is not configured' }
+    }
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) {
@@ -89,6 +100,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const signOut = async () => {
+    if (!supabase) return
     await supabase.auth.signOut()
   }
 
@@ -102,6 +114,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signOut,
     isStaff: !!isStaff,
     isBorrower: !!isBorrower
+  }
+
+  if (!configured) {
+    return <MissingConfigScreen />
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

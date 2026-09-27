@@ -1,9 +1,9 @@
-import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+import { createClient } from './client'
 
-const supabase = createSupabaseClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
-)
+function supabase() {
+  // RPCs and columns used here are not all present in generated Database types.
+  return createClient() as any
+}
 
 export interface ApiResponse<T = any> {
   success: boolean
@@ -33,7 +33,7 @@ export interface CreateApplicantData {
 
 export async function createApplicant(data: CreateApplicantData): Promise<ApiResponse> {
   try {
-    const { data: result, error } = await supabase.rpc('create_applicant_profile', {
+    const { data: result, error } = await supabase().rpc('create_applicant_profile', {
       p_tenant_id: data.tenant_id,
       p_full_name: data.full_name,
       p_sex: data.sex || null,
@@ -78,7 +78,7 @@ export interface CreateApplicationData {
 
 export async function createApplication(data: CreateApplicationData): Promise<ApiResponse> {
   try {
-    const { data: result, error } = await supabase.rpc('create_loan_application', {
+    const { data: result, error } = await supabase().rpc('create_loan_application', {
       p_tenant_id: data.tenant_id,
       p_applicant_id: data.applicant_id,
       p_amount_requested: data.amount_requested,
@@ -109,7 +109,7 @@ export async function updateApplicationStatus(
   updatedBy: string
 ): Promise<ApiResponse> {
   try {
-    const { data: result, error } = await supabase.rpc('update_application_status', {
+    const { data: result, error } = await supabase().rpc('update_application_status', {
       p_application_id: applicationId,
       p_status: status,
       p_updated_by: updatedBy
@@ -127,7 +127,7 @@ export async function updateApplicationStatus(
 
 export async function getApplicationDetails(applicationId: string): Promise<ApiResponse> {
   try {
-    const { data: result, error } = await supabase.rpc('get_application_details', {
+    const { data: result, error } = await supabase().rpc('get_application_details', {
       p_application_id: applicationId
     })
 
@@ -156,7 +156,7 @@ export async function saveEmployment(
   updatedBy: string
 ): Promise<ApiResponse> {
   try {
-    const { data: result, error } = await supabase.rpc('save_employment_info', {
+    const { data: result, error } = await supabase().rpc('save_employment_info', {
       p_application_id: applicationId,
       p_employer_name: data.employer_name,
       p_job_title: data.job_title || null,
@@ -189,7 +189,7 @@ export async function saveBankDetails(
   updatedBy: string
 ): Promise<ApiResponse> {
   try {
-    const { data: result, error } = await supabase.rpc('save_bank_details', {
+    const { data: result, error } = await supabase().rpc('save_bank_details', {
       p_application_id: applicationId,
       p_bank_name: data.bank_name || null,
       p_account_number: data.account_number || null,
@@ -221,7 +221,7 @@ export async function saveIncomeExpenditure(
   updatedBy: string
 ): Promise<ApiResponse> {
   try {
-    const { data: result, error } = await supabase.rpc('save_income_expenditure', {
+    const { data: result, error } = await supabase().rpc('save_income_expenditure', {
       p_application_id: applicationId,
       p_gross_monthly_income: data.gross_monthly_income || null,
       p_net_monthly_income: data.net_monthly_income || null,
@@ -253,7 +253,7 @@ export async function addCreditHistoryRow(
   updatedBy: string
 ): Promise<ApiResponse> {
   try {
-    const { data: result, error } = await supabase.rpc('add_credit_history_row', {
+    const { data: result, error } = await supabase().rpc('add_credit_history_row', {
       p_application_id: applicationId,
       p_lender_name: data.lender_name,
       p_amount: data.amount,
@@ -273,7 +273,7 @@ export async function addCreditHistoryRow(
 
 export async function removeCreditHistoryRow(rowId: string, updatedBy: string): Promise<ApiResponse> {
   try {
-    const { data: result, error } = await supabase.rpc('remove_credit_history_row', {
+    const { data: result, error } = await supabase().rpc('remove_credit_history_row', {
       p_row_id: rowId,
       p_updated_by: updatedBy
     })
@@ -291,7 +291,7 @@ export async function removeCreditHistoryRow(rowId: string, updatedBy: string): 
 // AI Assessment functions
 export async function runAIAssessment(applicationId: string): Promise<ApiResponse> {
   try {
-    const { data, error } = await supabase.functions.invoke('ai-assessment', {
+    const { data, error } = await supabase().functions.invoke('ai-assessment', {
       body: {
         applicationId,
         action: 'run_assessment'
@@ -310,7 +310,7 @@ export async function runAIAssessment(applicationId: string): Promise<ApiRespons
 
 export async function getAIAssessment(applicationId: string): Promise<ApiResponse> {
   try {
-    const { data, error } = await supabase.functions.invoke('ai-assessment', {
+    const { data, error } = await supabase().functions.invoke('ai-assessment', {
       body: {
         applicationId,
         action: 'get_assessment'
@@ -341,7 +341,7 @@ export async function recordDecision(
   data: RecordDecisionData
 ): Promise<ApiResponse> {
   try {
-    const { data: result, error } = await supabase.functions.invoke('ai-assessment', {
+    const { data: result, error } = await supabase().functions.invoke('ai-assessment', {
       body: {
         applicationId,
         action: 'record_decision',
@@ -371,7 +371,7 @@ export async function uploadDocument(
     const filePath = `applications/${applicationId}/${documentType}_${timestamp}.${file.name.split('.').pop()}`
     
     // Upload file to Supabase Storage
-    const { error: uploadError } = await supabase.storage
+    const { error: uploadError } = await supabase().storage
       .from('documents')
       .upload(filePath, file)
 
@@ -380,7 +380,7 @@ export async function uploadDocument(
     }
 
     // Save document record
-    const { data: docData, error: docError } = await supabase
+    const { data: docData, error: docError } = await supabase()
       .from('application_documents')
       .insert({
         application_id: applicationId,
@@ -397,7 +397,7 @@ export async function uploadDocument(
 
     if (docError) {
       // Clean up uploaded file if database insert fails
-      await supabase.storage.from('documents').remove([filePath])
+      await supabase().storage.from('documents').remove([filePath])
       return { success: false, error: docError.message }
     }
 
@@ -413,7 +413,7 @@ export async function reviewDocument(
   notes: string
 ): Promise<ApiResponse> {
   try {
-    const { error } = await supabase
+    const { error } = await supabase()
       .from('application_documents')
       .update({
         status,

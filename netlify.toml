@@ -1,0 +1,21 @@
+# Vite SPA on Netlify. Publish the production bundle, not the source index.html
+# (that file points at /src/main.tsx and yields a blank page on a static host).
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+  # Ignore leftover Next.js metadata (vercel.json) so the Next runtime is not applied.
+  NETLIFY_NEXT_PLUGIN_SKIP = "true"
+
+[dev]
+  command = "npm run dev"
+  targetPort = 3000
+  framework = "#custom"
+
+# Client-side routes (React Router) must fall back to index.html.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

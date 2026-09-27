@@ -1,10 +1,10 @@
-import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { sendVerificationCode, verifyCode } from './admin'
+import { createClient } from './client'
 
-const supabase = createSupabaseClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
-)
+function supabase() {
+  // RPCs and columns used here are not all present in generated Database types.
+  return createClient() as any
+}
 
 export interface AuthResponse {
   success: boolean
@@ -17,7 +17,7 @@ export interface AuthResponse {
 export async function loginAdmin(email: string, password: string): Promise<AuthResponse> {
   try {
     // First authenticate with Supabase
-    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+    const { data: authData, error: authError } = await supabase().auth.signInWithPassword({
       email,
       password
     })
@@ -27,14 +27,14 @@ export async function loginAdmin(email: string, password: string): Promise<AuthR
     }
 
     // Check user role
-    const { data: profile, error: profileError } = await supabase
+    const { data: profile, error: profileError } = await supabase()
       .from('users')
       .select('role')
       .eq('id', authData.user.id)
       .single()
 
     if (profileError || !profile) {
-      await supabase.auth.signOut()
+      await supabase().auth.signOut()
       return { success: false, error: 'User profile not found' }
     }
 
@@ -88,14 +88,14 @@ export async function registerBorrower(data: {
 }): Promise<AuthResponse> {
   try {
     // Check if applicant exists with this ID
-    const { data: existingApplicant } = await supabase
+    const { data: existingApplicant } = await supabase()
       .from('applicants')
       .select('id')
       .eq('id_number', data.id_number)
       .single()
 
     // Create auth user
-    const { data: authData, error: authError } = await supabase.auth.signUp({
+    const { data: authData, error: authError } = await supabase().auth.signUp({
       email: data.email,
       password: data.password,
       options: {
@@ -112,7 +112,7 @@ export async function registerBorrower(data: {
     }
 
     // Create user profile
-    const { error: profileError } = await supabase
+    const { error: profileError } = await supabase()
       .from('users')
       .insert({
         id: authData.user.id,
@@ -129,7 +129,7 @@ export async function registerBorrower(data: {
     // Create or link applicant record
     if (existingApplicant) {
       // Link existing applicant to user
-      await supabase
+      await supabase()
         .from('applicants')
         .update({ 
           user_id: authData.user.id,
@@ -140,7 +140,7 @@ export async function registerBorrower(data: {
         .eq('id', existingApplicant.id)
     } else {
       // Create new applicant
-      await supabase
+      await supabase()
         .from('applicants')
         .insert({
           user_id: authData.user.id,
@@ -191,7 +191,7 @@ export async function verifyBorrowerEmail(tempUserId: string, code: string): Pro
 export async function sendPasswordResetCode(email: string): Promise<AuthResponse> {
   try {
     // Check if user exists
-    const { data: profile, error: profileError } = await supabase
+    const { data: profile, error: profileError } = await supabase()
       .from('users')
       .select('id')
       .eq('email', email)
@@ -220,7 +220,7 @@ export async function sendPasswordResetCode(email: string): Promise<AuthResponse
 export async function resetPassword(email: string, code: string, newPassword: string): Promise<AuthResponse> {
   try {
     // Find user by email
-    const { data: user, error: userError } = await supabase
+    const { data: user, error: userError } = await supabase()
       .from('users')
       .select('id')
       .eq('email', email)
@@ -238,7 +238,7 @@ export async function resetPassword(email: string, code: string, newPassword: st
     }
 
     // Update password using Supabase Admin API
-    const { error: updateError } = await supabase.auth.admin.updateUserById(
+    const { error: updateError } = await supabase().auth.admin.updateUserById(
       user.id,
       { password: newPassword }
     )
@@ -257,7 +257,7 @@ export async function resetPassword(email: string, code: string, newPassword: st
 // Borrower login
 export async function loginBorrower(email: string, password: string): Promise<AuthResponse> {
   try {
-    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+    const { data: authData, error: authError } = await supabase().auth.signInWithPassword({
       email,
       password
     })
@@ -267,14 +267,14 @@ export async function loginBorrower(email: string, password: string): Promise<Au
     }
 
     // Verify user is a borrower
-    const { data: profile, error: profileError } = await supabase
+    const { data: profile, error: profileError } = await supabase()
       .from('users')
       .select('role')
       .eq('id', authData.user.id)
       .single()
 
     if (profileError || !profile || profile.role !== 'borrower') {
-      await supabase.auth.signOut()
+      await supabase().auth.signOut()
       return { success: false, error: 'Invalid credentials' }
     }
 
@@ -287,11 +287,11 @@ export async function loginBorrower(email: string, password: string): Promise<Au
 
 // Get current user
 export async function getCurrentUser() {
-  const { data: { user } } = await supabase.auth.getUser()
+  const { data: { user } } = await supabase().auth.getUser()
   return user
 }
 
 // Sign out
 export async function signOut() {
-  await supabase.auth.signOut()
+  await supabase().auth.signOut()
 }

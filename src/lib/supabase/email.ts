@@ -1,9 +1,8 @@
-import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+import { createClient } from './client'
 
-const supabase = createSupabaseClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
-)
+function supabase() {
+  return createClient() as any
+}
 
 interface EmailOptions {
   to: string
@@ -14,7 +13,7 @@ interface EmailOptions {
 
 export async function sendEmail(options: EmailOptions): Promise<{ success: boolean; error?: string }> {
   try {
-    const { error } = await supabase.functions.invoke('send-email', {
+    const { error } = await supabase().functions.invoke('send-email', {
       body: options
     })
 

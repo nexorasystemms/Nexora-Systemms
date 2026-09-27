@@ -1,9 +1,9 @@
-import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+import { createClient } from './client'
 
-const supabase = createSupabaseClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
-)
+function supabase() {
+  // RPCs and columns used here are not all present in generated Database types.
+  return createClient() as any
+}
 
 export interface ApiResponse<T = any> {
   success: boolean
@@ -22,7 +22,7 @@ export interface CreateUserData {
 
 export async function createUser(userData: CreateUserData): Promise<ApiResponse> {
   try {
-    const { data, error } = await supabase.rpc('create_user_account', {
+    const { data, error } = await supabase().rpc('create_user_account', {
       p_email: userData.email,
       p_full_name: userData.full_name,
       p_role: userData.role,
@@ -41,7 +41,7 @@ export async function createUser(userData: CreateUserData): Promise<ApiResponse>
 
 export async function updateUserStatus(userId: string, status: 'active' | 'inactive' | 'suspended'): Promise<ApiResponse> {
   try {
-    const { data, error } = await supabase.rpc('update_user_status', {
+    const { data, error } = await supabase().rpc('update_user_status', {
       p_user_id: userId,
       p_status: status
     })
@@ -58,7 +58,7 @@ export async function updateUserStatus(userId: string, status: 'active' | 'inact
 
 export async function updateUserRole(userId: string, role: string): Promise<ApiResponse> {
   try {
-    const { data, error } = await supabase.rpc('update_user_role', {
+    const { data, error } = await supabase().rpc('update_user_role', {
       p_user_id: userId,
       p_role: role
     })
@@ -75,7 +75,7 @@ export async function updateUserRole(userId: string, role: string): Promise<ApiR
 
 export async function getUserByEmail(email: string): Promise<ApiResponse> {
   try {
-    const { data, error } = await supabase.rpc('get_user_by_email', {
+    const { data, error } = await supabase().rpc('get_user_by_email', {
       p_email: email
     })
 
@@ -98,7 +98,7 @@ export interface ListUsersParams {
 
 export async function listUsers(params: ListUsersParams = {}): Promise<ApiResponse> {
   try {
-    const { data, error } = await supabase.rpc('list_users', {
+    const { data, error } = await supabase().rpc('list_users', {
       p_limit: params.limit || 50,
       p_offset: params.offset || 0,
       p_role: params.role || null,
@@ -128,7 +128,7 @@ export interface TenantData {
 
 export async function upsertTenant(tenantData: TenantData): Promise<ApiResponse> {
   try {
-    const { data, error } = await supabase.rpc('upsert_tenant', {
+    const { data, error } = await supabase().rpc('upsert_tenant', {
       p_id: tenantData.id || null,
       p_name: tenantData.name,
       p_code: tenantData.code,
@@ -150,7 +150,7 @@ export async function upsertTenant(tenantData: TenantData): Promise<ApiResponse>
 
 export async function listTenants(): Promise<ApiResponse> {
   try {
-    const { data, error } = await supabase.rpc('list_tenants')
+    const { data, error } = await supabase().rpc('list_tenants')
 
     if (error) {
       return { success: false, error: error.message }
@@ -173,7 +173,7 @@ export interface VerificationRequest {
 
 export async function callVerificationFunction(request: VerificationRequest): Promise<ApiResponse> {
   try {
-    const { data, error } = await supabase.functions.invoke('verify-email', {
+    const { data, error } = await supabase().functions.invoke('verify-email', {
       body: request
     })
 
@@ -216,7 +216,7 @@ export async function resendVerificationCode(userId: string, type: 'registration
 // Policy parameters management
 export async function updatePolicyParam(key: string, value: string): Promise<ApiResponse> {
   try {
-    const { error } = await supabase
+    const { error } = await supabase()
       .from('policy_params')
       .upsert({ 
         key, 
@@ -236,7 +236,7 @@ export async function updatePolicyParam(key: string, value: string): Promise<Api
 
 export async function getPolicyParams(): Promise<ApiResponse> {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await supabase()
       .from('policy_params')
       .select('*')
       .order('key')
@@ -254,7 +254,7 @@ export async function getPolicyParams(): Promise<ApiResponse> {
 // Document management
 export async function getDocumentSignedUrl(path: string): Promise<ApiResponse> {
   try {
-    const { data, error } = await supabase.storage
+    const { data, error } = await supabase().storage
       .from('documents')
       .createSignedUrl(path, 60) // 1 hour expiry
 
