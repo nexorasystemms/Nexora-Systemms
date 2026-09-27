@@ -20,6 +20,7 @@ import BorrowerPortalPage from './pages/portal/BorrowerPortalPage'
 import BorrowerLoginPage from './pages/portal/BorrowerLoginPage'
 import BorrowerRegisterPage from './pages/portal/BorrowerRegisterPage'
 import BorrowerApplyPage from './pages/portal/BorrowerApplyPage'
+import LandingPage from './pages/landing/LandingPage'
 
 function App() {
   return (
@@ -56,9 +57,8 @@ function App() {
           <Route path="pilot-guardrails" element={<PilotGuardrailsPage />} />
         </Route>
         
-        {/* Redirect to dashboard by default */}
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/" element={<LandingPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AuthProvider>
   )

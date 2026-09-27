@@ -3,6 +3,9 @@
 :root {
   --background: #f6f7fb;
   --foreground: #171a2b;
+  --font-inter: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-hanken-grotesk: "Hanken Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-jetbrains-mono: "JetBrains Mono", ui-monospace, monospace;
 
   /* Legacy Nexora brand tokens — still referenced by a few not-yet-restyled components. */
   --brand-navy: #241c5b;
@@ -253,4 +256,21 @@ body {
 
 ::selection {
   background: var(--brand-blue-light);
+}
+
+.material-symbols-outlined {
+  font-family: "Material Symbols Outlined";
+  font-weight: normal;
+  font-style: normal;
+  font-size: 1.25rem;
+  line-height: 1;
+  letter-spacing: normal;
+  display: inline-block;
+  white-space: nowrap;
+  direction: ltr;
+  font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+}
+
+.landing-range {
+  accent-color: #241c5b;
 }

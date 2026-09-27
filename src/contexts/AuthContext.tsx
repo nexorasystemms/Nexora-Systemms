@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { User } from '@supabase/supabase-js'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
-import MissingConfigScreen from '@/components/MissingConfigScreen'
 import type { StaffRole } from '@/types/database'
 
 interface AuthUser extends User {
@@ -114,10 +113,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signOut,
     isStaff: !!isStaff,
     isBorrower: !!isBorrower
-  }
-
-  if (!configured) {
-    return <MissingConfigScreen />
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
