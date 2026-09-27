@@ -1,17 +1,14 @@
-"use client";
-
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { Link, useLocation } from "react-router-dom";
 
 export default function NavLink({
   href, icon, label, badge,
 }: { href: string; icon: string; label: string; badge?: string | number | null }) {
-  const pathname = usePathname();
-  const active = href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(href + "/");
+  const location = useLocation();
+  const active = location.pathname === href || location.pathname.startsWith(href + "/");
 
   return (
     <Link
-      href={href}
+      to={href}
       aria-current={active ? "page" : undefined}
       className={`flex items-center justify-between gap-space-sm px-space-md py-space-sm rounded transition-colors duration-150 ${
         active

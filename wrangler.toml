@@ -1,18 +1,10 @@
-# Cloudflare Pages configuration for Next.js
+# Cloudflare Pages configuration for Vite SPA
 name = "nexora-systems"
 compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
 
-# Build configuration
 [build]
-command = "npm run pages:build"
+command = "npm run build"
 
-# Environment variables for Cloudflare Pages
-[env.production.vars]
-NODE_ENV = "production"
-
-# The rest of your environment variables should be added in the Cloudflare dashboard
-# under Settings > Environment variables
-
-# Deployment configuration
 [site]
-bucket = ".vercel/output/static"
+bucket = "./dist"

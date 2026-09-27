@@ -82,26 +82,26 @@ export const NAV_GROUPS: Array<{
   {
     group: "Core Lending Operations",
     items: [
-      { href: "/", label: "Applications", icon: "view_kanban", badge: "applications", visible: () => true },
-      { href: "/applicants", label: "New Intake", icon: "person_add", visible: canIntake },
-      { href: "/arrears", label: "Servicing & Arrears", icon: "history_toggle_off", visible: () => true },
-      { href: "/reports", label: "Reports", icon: "monitoring", visible: () => true },
+      { href: "/dashboard", label: "Applications", icon: "view_kanban", badge: "applications", visible: () => true },
+      { href: "/dashboard/applicants", label: "New Intake", icon: "person_add", visible: canIntake },
+      { href: "/dashboard/arrears", label: "Servicing & Arrears", icon: "history_toggle_off", visible: () => true },
+      { href: "/dashboard/reports", label: "Reports", icon: "monitoring", visible: () => true },
     ],
   },
   {
     group: "Governance & Audit",
     items: [
-      { href: "/audit-log", label: "Audit Chaining", icon: "lock_clock", visible: canViewAuditLog },
-      { href: "/consents", label: "Consents & KYC", icon: "verified_user", visible: canViewAuditLog },
-      { href: "/policy-params", label: "Policy Parameters", icon: "tune", visible: canManagePolicyParams },
-      { href: "/pilot-guardrails", label: "Pilot Guardrails", icon: "shield", badge: "pilotStatus", visible: canManagePolicyParams },
+      { href: "/dashboard/audit-log", label: "Audit Chaining", icon: "lock_clock", visible: canViewAuditLog },
+      { href: "/dashboard/consents", label: "Consents & KYC", icon: "verified_user", visible: canViewAuditLog },
+      { href: "/dashboard/policy-params", label: "Policy Parameters", icon: "tune", visible: canManagePolicyParams },
+      { href: "/dashboard/pilot-guardrails", label: "Pilot Guardrails", icon: "shield", badge: "pilotStatus", visible: canManagePolicyParams },
     ],
   },
   {
     group: "Administration",
     items: [
-      { href: "/users", label: "Staff & Roles", icon: "admin_panel_settings", visible: canManageUsers },
-      { href: "/tenants", label: "Tenants", icon: "domain", visible: (role) => role === "super_admin" },
+      { href: "/dashboard/users", label: "Staff & Roles", icon: "admin_panel_settings", visible: canManageUsers },
+      { href: "/dashboard/tenants", label: "Tenants", icon: "domain", visible: (role) => role === "super_admin" },
     ],
   },
 ];

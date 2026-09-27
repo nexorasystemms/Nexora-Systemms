@@ -1,19 +1,18 @@
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
+import { signOut } from "../../lib/supabase/auth";
 
 export default function SignOutButton() {
   const navigate = useNavigate();
-  const { signOut } = useAuth();
 
   async function handleSignOut() {
     await signOut();
-    navigate("/login");
+    navigate('/portal/login');
   }
 
   return (
     <button
       onClick={handleSignOut}
-      className="text-sm text-brand-muted hover:text-brand-navy transition"
+      className="text-sm text-slate-600 hover:text-slate-900 transition"
     >
       Sign out
     </button>
