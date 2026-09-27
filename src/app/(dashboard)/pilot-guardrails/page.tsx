@@ -1,10 +1,13 @@
-import { requireRole } from "@/lib/current-staff";
-import { createClient } from "@/lib/supabase/server";
+'use client';
+
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import { formatNad } from "@/lib/format";
 
 function startOfIsoWeek(d: Date): Date {
   const date = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-  const day = date.getUTCDay() || 7;
+  const day = date.getUTCDay() || 7; // Sunday -> 7
   if (day !== 1) date.setUTCDate(date.getUTCDate() - (day - 1));
   date.setUTCHours(0, 0, 0, 0);
   return date;
@@ -13,36 +16,89 @@ function startOfIsoWeek(d: Date): Date {
 // SRS §9.3: the pilot's own volume/amount guardrails — kept as dated policy_params, not code
 // constants, so they can be tightened or relaxed without a deploy. This page is the only place
 // that shows compliance against them in real time.
-export default async function PilotGuardrailsPage() {
-  const staff = await requireRole(["admin", "super_admin"]);
-  const supabase = await createClient();
+export default function PilotGuardrailsPage() {
+  const [staff, setStaff] = useState<any>(null);
+  const [applications, setApplications] = useState<any[]>([]);
+  const [params, setParams] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
-  const { data: params } = await supabase
-    .from("policy_params")
-    .select("param_key, param_value, effective_from, note")
-    .eq("tenant_id", staff.tenant_id ?? "")
-    .in("param_key", ["pilot_volume_cap_per_week", "pilot_amount_cap_nad"])
-    .order("effective_from", { ascending: false });
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const supabase = createClient();
+        
+        // Check authentication
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          router.push('/login');
+          return;
+        }
 
+        const { data: userData } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+
+        if (!userData || !['admin', 'super_admin'].includes(userData.role)) {
+          router.push('/');
+          return;
+        }
+
+        setStaff(userData);
+
+        const [{ data: appsData }, { data: paramsData }] = await Promise.all([
+          supabase.from("applications").select("*").order("created_at", { ascending: false }),
+          supabase
+            .from("policy_params")
+            .select("*")
+            .eq("tenant_id", userData.tenant_id ?? "")
+            .in("param_key", ["pilot_volume_cap_per_week", "pilot_amount_cap_nad"])
+        ]);
+
+        setApplications(appsData || []);
+        setParams(paramsData || []);
+
+      } catch (error) {
+        console.error('Error loading pilot guardrails:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadData();
+  }, [router]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-on-surface-variant">Loading pilot guardrails...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!staff) {
+    return null; // Will redirect
+  }
+
+  // Calculate derived values from state
   const latest = new Map<string, { value: number; note: string | null }>();
-  for (const p of params ?? []) {
+  for (const p of params) {
     if (!latest.has(p.param_key)) latest.set(p.param_key, { value: Number(p.param_value), note: p.note });
   }
   const volumeCap = latest.get("pilot_volume_cap_per_week")?.value ?? null;
   const amountCap = latest.get("pilot_amount_cap_nad")?.value ?? null;
 
   const weekStart = startOfIsoWeek(new Date());
-  const { data: thisWeekApps } = await supabase
-    .from("applications")
-    .select("id, reference_number, amount_requested, created_at")
-    .gte("created_at", weekStart.toISOString())
-    .order("created_at", { ascending: false });
+  const thisWeekApps = applications.filter(a => new Date(a.created_at) >= weekStart);
+  const overCapApps = amountCap != null ? thisWeekApps.filter((a) => Number(a.amount_requested) > amountCap) : [];
 
-  const overCapApps = amountCap != null ? (thisWeekApps ?? []).filter((a) => Number(a.amount_requested) > amountCap) : [];
-
-  const { data: allApps } = await supabase.from("applications").select("id, amount_requested, created_at").order("created_at", { ascending: false }).limit(500);
   const weekBuckets = new Map<string, { count: number; volume: number }>();
-  for (const a of allApps ?? []) {
+  for (const a of applications.slice(0, 500)) {
     const wk = startOfIsoWeek(new Date(a.created_at)).toISOString().slice(0, 10);
     const bucket = weekBuckets.get(wk) ?? { count: 0, volume: 0 };
     bucket.count += 1;
@@ -51,7 +107,7 @@ export default async function PilotGuardrailsPage() {
   }
   const recentWeeks = [...weekBuckets.entries()].sort((a, b) => b[0].localeCompare(a[0])).slice(0, 6);
 
-  const weekCount = thisWeekApps?.length ?? 0;
+  const weekCount = thisWeekApps.length;
   const withinVolumeCap = volumeCap == null || weekCount <= volumeCap;
 
   return (

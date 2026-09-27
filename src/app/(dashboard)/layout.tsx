@@ -1,6 +1,9 @@
+'use client';
+
+import { useState, useEffect } from "react";
 import Image from "next/image";
-import { requireStaff } from "@/lib/current-staff";
-import { createClient } from "@/lib/supabase/server";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import { NAV_GROUPS, roleLabel } from "@/lib/roles";
 import NavLink from "@/components/NavLink";
 import SignOutButton from "@/components/SignOutButton";
@@ -13,44 +16,110 @@ function startOfIsoWeek(d: Date): Date {
   return date;
 }
 
-export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const staff = await requireStaff();
-  const supabase = await createClient();
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const [staff, setStaff] = useState<any>(null);
+  const [tenant, setTenant] = useState<any>(null);
+  const [activeCount, setActiveCount] = useState(0);
+  const [pilotCap, setPilotCap] = useState<number | null>(null);
+  const [weekCount, setWeekCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
-  const [{ data: tenant }, { count: activeCount }, { data: capParam }, { count: weekCount }] = await Promise.all([
-    staff.tenant_id
-      ? supabase.from("tenants").select("name, namfisa_reg_number").eq("id", staff.tenant_id).single()
-      : Promise.resolve({ data: null }),
-    supabase
-      .from("applications")
-      .select("id", { count: "exact", head: true })
-      .not("status", "in", "(settled,declined,withdrawn,handed_over)"),
-    staff.tenant_id
-      ? supabase
-          .from("policy_params")
-          .select("param_value")
-          .eq("tenant_id", staff.tenant_id)
-          .eq("param_key", "pilot_volume_cap_per_week")
-          .lte("effective_from", new Date().toISOString().slice(0, 10))
-          .order("effective_from", { ascending: false })
-          .limit(1)
-          .maybeSingle()
-      : Promise.resolve({ data: null }),
-    supabase
-      .from("applications")
-      .select("id", { count: "exact", head: true })
-      .gte("created_at", startOfIsoWeek(new Date()).toISOString()),
-  ]);
+  useEffect(() => {
+    async function loadLayoutData() {
+      try {
+        const supabase = createClient();
+        
+        // Check authentication
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          router.push('/login');
+          return;
+        }
 
-  const pilotCap = capParam ? Number(capParam.param_value) : null;
+        const { data: userData } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+
+        if (!userData || userData.role === 'borrower') {
+          router.push('/login');
+          return;
+        }
+
+        setStaff(userData);
+
+        // Load tenant and other data in parallel
+        const [
+          { data: tenantData },
+          { count: activeCountData },
+          { data: capParam },
+          { count: weekCountData }
+        ] = await Promise.all([
+          userData.tenant_id
+            ? supabase.from("tenants").select("name, namfisa_reg_number").eq("id", userData.tenant_id).single()
+            : Promise.resolve({ data: null }),
+          supabase
+            .from("applications")
+            .select("id", { count: "exact", head: true })
+            .not("status", "in", "(settled,declined,withdrawn,handed_over)"),
+          userData.tenant_id
+            ? supabase
+                .from("policy_params")
+                .select("param_value")
+                .eq("tenant_id", userData.tenant_id)
+                .eq("param_key", "pilot_volume_cap_per_week")
+                .lte("effective_from", new Date().toISOString().slice(0, 10))
+                .order("effective_from", { ascending: false })
+                .limit(1)
+                .maybeSingle()
+            : Promise.resolve({ data: null }),
+          supabase
+            .from("applications")
+            .select("id", { count: "exact", head: true })
+            .gte("created_at", startOfIsoWeek(new Date()).toISOString()),
+        ]);
+
+        setTenant(tenantData);
+        setActiveCount(activeCountData ?? 0);
+        setPilotCap(capParam ? Number(capParam.param_value) : null);
+        setWeekCount(weekCountData ?? 0);
+
+      } catch (error) {
+        console.error('Error loading layout data:', error);
+        router.push('/login');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadLayoutData();
+  }, [router]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-on-surface-variant">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!staff) {
+    return null; // Will redirect to login
+  }
+
   const visibleGroups = NAV_GROUPS.map((g) => ({
     ...g,
     items: g.items.filter((item) => item.visible(staff.role)),
   })).filter((g) => g.items.length > 0);
 
   const badgeValues: Record<string, string | number> = {
-    applications: activeCount ?? 0,
-    pilotStatus: pilotCap != null ? `${weekCount ?? 0}/${pilotCap}` : "—",
+    applications: activeCount,
+    pilotStatus: pilotCap != null ? `${weekCount}/${pilotCap}` : "—",
   };
 
   return (
@@ -74,12 +143,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
               <div className="bg-surface-container rounded p-space-sm flex flex-col gap-space-xs border border-outline-variant/30">
                 <div className="flex items-center justify-between text-[11px] text-on-surface-variant">
                   <span className="font-bold uppercase tracking-wide">Pilot Quota (this week)</span>
-                  <span className="font-mono text-primary font-bold">{weekCount ?? 0} / {pilotCap}</span>
+                  <span className="font-mono text-primary font-bold">{weekCount} / {pilotCap}</span>
                 </div>
                 <div className="w-full h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
                   <div
-                    className={`h-full rounded-full ${(weekCount ?? 0) >= pilotCap ? "bg-error" : "bg-primary-container"}`}
-                    style={{ width: `${Math.min(100, ((weekCount ?? 0) / pilotCap) * 100)}%` }}
+                    className={`h-full rounded-full ${weekCount >= pilotCap ? "bg-error" : "bg-primary-container"}`}
+                    style={{ width: `${Math.min(100, (weekCount / pilotCap) * 100)}%` }}
                   />
                 </div>
               </div>

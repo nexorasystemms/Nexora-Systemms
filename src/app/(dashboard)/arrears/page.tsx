@@ -1,15 +1,67 @@
+'use client';
+
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import { formatNad } from "@/lib/format";
 
 // FR-RPT-02: every loan in_arrears, days past due, penalty accrued, 90-day hand-over flag.
-export default async function ArrearsPage() {
-  const supabase = await createClient();
+export default function ArrearsPage() {
+  const [events, setEvents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
-  const { data: events } = await supabase
-    .from("arrears_events")
-    .select("*, loans(id, application_id, disbursed_amount, applications(reference_number, applicants(full_name)))")
-    .order("days_past_due", { ascending: false });
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const supabase = createClient();
+        
+        // Check authentication
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          router.push('/login');
+          return;
+        }
+
+        const { data: userData } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', session.user.id)
+          .single();
+
+        if (!userData || userData.role === 'borrower') {
+          router.push('/login');
+          return;
+        }
+
+        const { data: eventsData } = await supabase
+          .from("arrears_events")
+          .select("*, loans(id, application_id, disbursed_amount, applications(reference_number, applicants(full_name)))")
+          .order("days_past_due", { ascending: false });
+
+        setEvents(eventsData || []);
+
+      } catch (error) {
+        console.error('Error loading arrears:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadData();
+  }, [router]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-on-surface-variant">Loading arrears...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -30,7 +82,7 @@ export default async function ArrearsPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-brand-border">
-            {events?.map((e) => {
+            {events.map((e) => {
               type LoanJoin = { id: string; application_id: string; applications: { reference_number: string; applicants: { full_name: string } } };
               const loan = e.loans as unknown as LoanJoin;
               return (

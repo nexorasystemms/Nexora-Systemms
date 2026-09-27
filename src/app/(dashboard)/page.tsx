@@ -1,6 +1,9 @@
+'use client';
+
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { requireStaff } from "@/lib/current-staff";
-import { createClient } from "@/lib/supabase/server";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import { formatNad, formatDate } from "@/lib/format";
 import type { RuleResult } from "@/lib/rules-engine/types";
 import type { ApplicationStatus } from "@/types/database";
@@ -27,41 +30,114 @@ function ruleStatusBadge(rulesPassed: RuleResult[] | null, rulesFailed: RuleResu
   return { label: `Passed ${total}/${total}`, tone: "bg-tertiary-fixed/40 text-tertiary-container", icon: "check_circle" };
 }
 
-export default async function PipelinePage() {
-  const staff = await requireStaff();
-  const supabase = await createClient();
+export default function PipelinePage() {
+  const [staff, setStaff] = useState<any>(null);
+  const [applications, setApplications] = useState<any[]>([]);
+  const [assessments, setAssessments] = useState<any[]>([]);
+  const [loans, setLoans] = useState<any[]>([]);
+  const [arrearsEvents, setArrearsEvents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
-  const { data: applications } = await supabase
-    .from("applications")
-    .select("id, reference_number, amount_requested, term_months, product_type, next_pay_date, status, created_at, updated_at, applicants(full_name, id_type), users(full_name)")
-    .order("updated_at", { ascending: false })
-    .limit(100);
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const supabase = createClient();
+        
+        // Check authentication and get staff info
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          router.push('/login');
+          return;
+        }
 
-  type LatestAssessment = {
-    application_id: string; computed_s: number | null; computed_dsr: number | null;
-    rules_passed: unknown; rules_failed: unknown; created_at: string;
-  };
-  const appIds = (applications ?? []).map((a) => a.id);
-  const { data: assessments } = appIds.length
-    ? await supabase
-        .from("assessments")
-        .select("application_id, computed_s, computed_dsr, rules_passed, rules_failed, created_at")
-        .in("application_id", appIds)
-        .order("created_at", { ascending: false })
-    : { data: [] as LatestAssessment[] };
+        const { data: userData } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
 
-  const latestAssessmentByApp = new Map<string, LatestAssessment>();
-  for (const a of assessments ?? []) if (!latestAssessmentByApp.has(a.application_id)) latestAssessmentByApp.set(a.application_id, a);
+        if (!userData || userData.role === 'borrower') {
+          router.push('/login');
+          return;
+        }
 
-  const { data: loans } = await supabase.from("loans").select("disbursed_amount, status");
-  const { data: arrearsEvents } = await supabase.from("arrears_events").select("penalty_charged, status").eq("status", "open");
+        setStaff(userData);
 
-  const activeApps = (applications ?? []).filter((a) => !["settled", "declined", "withdrawn", "handed_over"].includes(a.status));
+        // Load applications data
+        const { data: appsData } = await supabase
+          .from("applications")
+          .select("id, reference_number, amount_requested, term_months, product_type, next_pay_date, status, created_at, updated_at, applicants(full_name, id_type), users(full_name)")
+          .order("updated_at", { ascending: false })
+          .limit(100);
+
+        setApplications(appsData || []);
+
+        // Load assessments
+        if (appsData && appsData.length > 0) {
+          const appIds = appsData.map((a) => a.id);
+          const { data: assessmentsData } = await supabase
+            .from("assessments")
+            .select("application_id, computed_s, computed_dsr, rules_passed, rules_failed, created_at")
+            .in("application_id", appIds)
+            .order("created_at", { ascending: false });
+          
+          setAssessments(assessmentsData || []);
+        }
+
+        // Load loans and arrears
+        const { data: loansData } = await supabase
+          .from("loans")
+          .select("disbursed_amount, status");
+        
+        const { data: arrearsData } = await supabase
+          .from("arrears_events")
+          .select("penalty_charged, status")
+          .eq("status", "open");
+
+        setLoans(loansData || []);
+        setArrearsEvents(arrearsData || []);
+
+      } catch (error) {
+        console.error('Error loading dashboard data:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadData();
+  }, [router]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-on-surface-variant">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!staff) {
+    return null; // Will redirect to login
+  }
+
+  // Calculate latest assessments
+  const latestAssessmentByApp = new Map();
+  for (const a of assessments) {
+    if (!latestAssessmentByApp.has(a.application_id)) {
+      latestAssessmentByApp.set(a.application_id, a);
+    }
+  }
+
+  // Calculate KPIs
+  const activeApps = applications.filter((a) => !["settled", "declined", "withdrawn", "handed_over"].includes(a.status));
   const activeVolume = activeApps.reduce((s, a) => s + Number(a.amount_requested), 0);
-  const disbursedLoans = (loans ?? []).filter((l) => l.status !== "handed_over");
+  const disbursedLoans = loans.filter((l) => l.status !== "handed_over");
   const disbursedVolume = disbursedLoans.reduce((s, l) => s + Number(l.disbursed_amount), 0);
-  const awaitingDecision = (applications ?? []).filter((a) => a.status === "assessed").length;
-  const arrearsAtRisk = (arrearsEvents ?? []).reduce((s, e) => s + Number(e.penalty_charged), 0);
+  const awaitingDecision = applications.filter((a) => a.status === "assessed").length;
+  const arrearsAtRisk = arrearsEvents.reduce((s, e) => s + Number(e.penalty_charged), 0);
 
   return (
     <div className="space-y-space-lg">
@@ -84,14 +160,14 @@ export default async function PipelinePage() {
         <KpiCard label="Active Pipeline" icon="account_tree" value={String(activeApps.length)} unit="Applications" sub={`Requested vol: ${formatNad(activeVolume)}`} />
         <KpiCard label="Awaiting Decision" icon="gavel" value={String(awaitingDecision)} unit="Assessed" sub="Ready for approver review" />
         <KpiCard label="Disbursed" icon="payments" value={String(disbursedLoans.length)} unit="Loans Booked" sub={`Net capital: ${formatNad(disbursedVolume)}`} tone="tertiary" />
-        <KpiCard label="Arrears Watchlist" icon="warning" value={String(arrearsEvents?.length ?? 0)} unit="Open Cases" sub={`${formatNad(arrearsAtRisk)} penalty accrued`} tone="error" />
+        <KpiCard label="Arrears Watchlist" icon="warning" value={String(arrearsEvents.length)} unit="Open Cases" sub={`${formatNad(arrearsAtRisk)} penalty accrued`} tone="error" />
       </div>
 
       <div className="w-full bg-surface-container-lowest rounded-xl p-space-lg shadow-sm space-y-space-md">
         <h2 className="text-lg font-bold text-on-surface">Origination Lifecycle</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-space-sm">
           {STAGES.map((stage) => {
-            const inStage = (applications ?? []).filter((a) => stage.key.includes(a.status));
+            const inStage = applications.filter((a) => stage.key.includes(a.status));
             const sum = inStage.reduce((s, a) => s + Number(a.amount_requested), 0);
             return (
               <div key={stage.label} className="bg-surface-container-low rounded-lg p-space-sm flex flex-col justify-between min-h-[88px] shadow-sm">
@@ -115,7 +191,7 @@ export default async function PipelinePage() {
             <p className="text-sm text-on-surface-variant">Live surplus and rule-engine status straight from the latest assessment on file.</p>
           </div>
           <span className="px-space-xs py-0.5 rounded bg-surface-container text-on-surface-variant font-mono text-[11px] font-semibold">
-            {applications?.length ?? 0} RECORDS
+            {applications.length} RECORDS
           </span>
         </div>
         <div className="w-full overflow-x-auto">
@@ -133,7 +209,7 @@ export default async function PipelinePage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-surface-container-low text-sm text-on-surface">
-              {applications?.map((app) => {
+              {applications.map((app) => {
                 const assessment = latestAssessmentByApp.get(app.id);
                 const rules = ruleStatusBadge(
                   (assessment?.rules_passed as RuleResult[] | null) ?? null,
@@ -176,7 +252,7 @@ export default async function PipelinePage() {
                   </tr>
                 );
               })}
-              {!applications?.length && (
+              {!applications.length && (
                 <tr>
                   <td colSpan={8} className="px-space-md py-10 text-center text-on-surface-variant">
                     No applications yet. Create the first one from &ldquo;New Intake Dossier&rdquo; above.

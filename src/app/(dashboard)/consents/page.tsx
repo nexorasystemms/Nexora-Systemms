@@ -1,5 +1,8 @@
-import { requireRole } from "@/lib/current-staff";
-import { createClient } from "@/lib/supabase/server";
+'use client';
+
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import { formatDateTime } from "@/lib/format";
 import type { ConsentType } from "@/types/database";
 
@@ -13,20 +16,67 @@ const CONSENT_LABELS: Record<ConsentType, string> = {
 
 // FR-CONSENT-01/02: five separately withdrawable consent records per applicant — this is the
 // tenant-wide audit view across every applicant, not just the one inside an application file.
-export default async function ConsentsPage() {
-  const staff = await requireRole(["admin", "super_admin", "approver"]);
-  const supabase = await createClient();
+export default function ConsentsPage() {
+  const [consents, setConsents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
-  const { data: consents } = await supabase
-    .from("consents")
-    .select("*, applicants(full_name, id_type)")
-    .eq("tenant_id", staff.tenant_id ?? "")
-    .order("created_at", { ascending: false })
-    .limit(300);
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const supabase = createClient();
+        
+        // Check authentication
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          router.push('/login');
+          return;
+        }
 
-  const totalApplicants = new Set((consents ?? []).map((c) => c.applicant_id)).size;
-  const grantedCount = (consents ?? []).filter((c) => c.granted).length;
-  const withdrawnCount = (consents ?? []).filter((c) => c.withdrawn_at).length;
+        const { data: userData } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+
+        if (!userData || !['admin', 'super_admin', 'approver'].includes(userData.role)) {
+          router.push('/');
+          return;
+        }
+
+        const { data: consentsData } = await supabase
+          .from("consents")
+          .select("*, applicants(full_name, id_type)")
+          .eq("tenant_id", userData.tenant_id ?? "")
+          .order("created_at", { ascending: false })
+          .limit(300);
+
+        setConsents(consentsData || []);
+
+      } catch (error) {
+        console.error('Error loading consents:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadData();
+  }, [router]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-on-surface-variant">Loading consents...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const totalApplicants = new Set(consents.map((c) => c.applicant_id)).size;
+  const grantedCount = consents.filter((c) => c.granted).length;
+  const withdrawnCount = consents.filter((c) => c.withdrawn_at).length;
 
   return (
     <div className="space-y-space-lg">
@@ -53,7 +103,7 @@ export default async function ConsentsPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-surface-container-low text-sm">
-            {consents?.map((c) => {
+            {consents.map((c) => {
               const applicant = c.applicants as unknown as { full_name: string } | null;
               return (
                 <tr key={c.id} className="hover:bg-surface-container-low transition-colors">
@@ -73,7 +123,7 @@ export default async function ConsentsPage() {
                 </tr>
               );
             })}
-            {!consents?.length && (
+            {!consents.length && (
               <tr><td colSpan={5} className="px-space-md py-10 text-center text-on-surface-variant">No consent records yet.</td></tr>
             )}
           </tbody>

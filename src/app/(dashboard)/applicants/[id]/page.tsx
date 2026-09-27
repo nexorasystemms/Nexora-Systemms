@@ -1,21 +1,98 @@
+'use client';
+
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import StatusBadge from "@/components/StatusBadge";
 import { formatNad, formatDate } from "@/lib/format";
 
-export default async function ApplicantDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const supabase = await createClient();
+export default function ApplicantDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const [applicant, setApplicant] = useState<any>(null);
+  const [applications, setApplications] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [applicantId, setApplicantId] = useState<string>('');
+  const router = useRouter();
 
-  const { data: applicant } = await supabase.from("applicants").select("*").eq("id", id).single();
-  if (!applicant) notFound();
+  useEffect(() => {
+    async function getParams() {
+      const resolvedParams = await params;
+      setApplicantId(resolvedParams.id);
+    }
+    getParams();
+  }, [params]);
 
-  const { data: applications } = await supabase
-    .from("applications")
-    .select("id, reference_number, amount_requested, status, created_at")
-    .eq("applicant_id", id)
-    .order("created_at", { ascending: false });
+  useEffect(() => {
+    if (!applicantId) return;
+
+    async function loadApplicantData() {
+      try {
+        const supabase = createClient();
+        
+        // Check authentication
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          router.push('/login');
+          return;
+        }
+
+        const { data: userData } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', session.user.id)
+          .single();
+
+        if (!userData || userData.role === 'borrower') {
+          router.push('/login');
+          return;
+        }
+
+        const { data: applicantData } = await supabase
+          .from("applicants")
+          .select("*")
+          .eq("id", applicantId)
+          .single();
+
+        if (!applicantData) {
+          router.push('/applicants');
+          return;
+        }
+
+        setApplicant(applicantData);
+
+        const { data: applicationsData } = await supabase
+          .from("applications")
+          .select("id, reference_number, amount_requested, status, created_at")
+          .eq("applicant_id", applicantId)
+          .order("created_at", { ascending: false });
+
+        setApplications(applicationsData || []);
+
+      } catch (error) {
+        console.error('Error loading applicant data:', error);
+        router.push('/applicants');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadApplicantData();
+  }, [applicantId, router]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-on-surface-variant">Loading applicant...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!applicant) {
+    return null; // Will redirect
+  }
 
   return (
     <div className="space-y-6">
@@ -52,7 +129,7 @@ export default async function ApplicantDetailPage({ params }: { params: Promise<
               </tr>
             </thead>
             <tbody className="divide-y divide-brand-border">
-              {applications?.map((app) => (
+              {applications.map((app) => (
                 <tr key={app.id} className="hover:bg-gray-50 transition">
                   <td className="px-4 py-3">
                     <Link href={`/applications/${app.id}`} className="text-brand-blue font-medium hover:underline">
@@ -64,7 +141,7 @@ export default async function ApplicantDetailPage({ params }: { params: Promise<
                   <td className="px-4 py-3 text-brand-muted">{formatDate(app.created_at)}</td>
                 </tr>
               ))}
-              {!applications?.length && (
+              {!applications.length && (
                 <tr>
                   <td colSpan={4} className="px-4 py-8 text-center text-brand-muted">No applications yet.</td>
                 </tr>

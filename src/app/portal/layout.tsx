@@ -1,35 +1,72 @@
+'use client';
+
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/client";
 import SignOutButton from "./SignOutButton";
 
-export default async function BorrowerPortalLayout({
+export default function BorrowerPortalLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const [user, setUser] = useState<any>(null);
+  const [profile, setProfile] = useState<any>(null);
+  const [applicant, setApplicant] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadUserData() {
+      try {
+        const supabase = createClient();
+        const { data: { user: userData } } = await supabase.auth.getUser();
+        
+        setUser(userData);
+
+        if (userData) {
+          const { data: profileData } = await supabase
+            .from("users")
+            .select("*")
+            .eq("id", userData.id)
+            .maybeSingle();
+
+          setProfile(profileData);
+
+          if (profileData?.applicant_id) {
+            const { data: appData } = await supabase
+              .from("applicants")
+              .select("*")
+              .eq("id", profileData.applicant_id)
+              .maybeSingle();
+            setApplicant(appData);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading user data:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadUserData();
+  }, []);
+
+  // Show loading for authenticated pages
+  if (loading && user !== null) {
+    return (
+      <div data-surface="portal" className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-on-surface-variant">Loading portal...</p>
+        </div>
+      </div>
+    );
+  }
 
   // If unauthenticated (e.g. on /portal/login or /portal/register), render children directly
   if (!user) {
     return <div data-surface="portal">{children}</div>;
-  }
-
-  const { data: profile } = await supabase
-    .from("users")
-    .select("*")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  let applicant = null;
-  if (profile?.applicant_id) {
-    const { data: appData } = await supabase
-      .from("applicants")
-      .select("*")
-      .eq("id", profile.applicant_id)
-      .maybeSingle();
-    applicant = appData;
   }
 
   return (

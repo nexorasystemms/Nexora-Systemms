@@ -1,7 +1,10 @@
+'use client';
+
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import { Suspense } from "react";
-import { requireBorrower } from "@/lib/current-borrower";
-import { createAdminClient } from "@/lib/supabase/admin";
 import type {
   ApplicationRow,
   DocumentRow,
@@ -17,14 +20,169 @@ import AgreementCard from "./AgreementCard";
 import RepaymentScheduleCard from "./RepaymentScheduleCard";
 import WelcomeMessage from "./WelcomeMessage";
 
-export const metadata = {
-  title: "Dashboard — TMU CashLoan CC Borrower Portal",
-};
+export default function BorrowerPortalPage() {
+  const [user, setUser] = useState<any>(null);
+  const [applicant, setApplicant] = useState<any>(null);
+  const [currentApp, setCurrentApp] = useState<any>(null);
+  const [documents, setDocuments] = useState<any[]>([]);
+  const [latestDecision, setLatestDecision] = useState<any>(null);
+  const [activeAgreement, setActiveAgreement] = useState<any>(null);
+  const [activeLoan, setActiveLoan] = useState<any>(null);
+  const [schedules, setSchedules] = useState<any[]>([]);
+  const [repayments, setRepayments] = useState<any[]>([]);
+  const [openArrears, setOpenArrears] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
-export default async function BorrowerPortalPage() {
-  const { user, applicant } = await requireBorrower();
-  const admin = createAdminClient();
+  useEffect(() => {
+    async function loadPortalData() {
+      try {
+        const supabase = createClient();
+        
+        // Check authentication
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          router.push('/portal/login');
+          return;
+        }
 
+        const { data: userData } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+
+        if (!userData || userData.role !== 'borrower') {
+          router.push('/portal/login');
+          return;
+        }
+
+        setUser(userData);
+
+        // Get applicant info
+        if (userData.applicant_id) {
+          const { data: applicantData } = await supabase
+            .from('applicants')
+            .select('*')
+            .eq('id', userData.applicant_id)
+            .single();
+
+          setApplicant(applicantData);
+
+          if (applicantData) {
+            // Load applications
+            const { data: applicationsData } = await supabase
+              .from("applications")
+              .select("*")
+              .eq("applicant_id", applicantData.id)
+              .order("created_at", { ascending: false });
+
+            const applications = applicationsData || [];
+            const currentApplication = applications[0] || null;
+            setCurrentApp(currentApplication);
+
+            if (currentApplication) {
+              // Load related data in parallel
+              const [
+                { data: docsData },
+                { data: decisionData },
+                { data: agreementData },
+                { data: loanData }
+              ] = await Promise.all([
+                supabase
+                  .from("documents")
+                  .select("*")
+                  .eq("entity_type", "application")
+                  .eq("entity_id", currentApplication.id)
+                  .order("created_at", { ascending: false }),
+                supabase
+                  .from("decisions")
+                  .select("*")
+                  .eq("application_id", currentApplication.id)
+                  .order("decided_at", { ascending: false })
+                  .limit(1)
+                  .maybeSingle(),
+                supabase
+                  .from("agreements")
+                  .select("*")
+                  .eq("application_id", currentApplication.id)
+                  .order("created_at", { ascending: false })
+                  .limit(1)
+                  .maybeSingle(),
+                supabase
+                  .from("loans")
+                  .select("*")
+                  .eq("application_id", currentApplication.id)
+                  .maybeSingle(),
+              ]);
+
+              setDocuments(docsData || []);
+              setLatestDecision(decisionData);
+              setActiveAgreement(agreementData);
+              setActiveLoan(loanData);
+
+              // Load loan-related data if exists
+              if (loanData) {
+                const [
+                  { data: schedData },
+                  { data: repData },
+                  { data: arrearsData }
+                ] = await Promise.all([
+                  supabase
+                    .from("schedules")
+                    .select("*")
+                    .eq("loan_id", loanData.id)
+                    .order("instalment_number", { ascending: true }),
+                  supabase
+                    .from("repayments")
+                    .select("*")
+                    .eq("loan_id", loanData.id)
+                    .order("paid_date", { ascending: false }),
+                  supabase
+                    .from("arrears_events")
+                    .select("days_past_due, penalty_charged")
+                    .eq("loan_id", loanData.id)
+                    .eq("status", "open")
+                    .order("days_past_due", { ascending: false })
+                    .limit(1)
+                    .maybeSingle(),
+                ]);
+
+                setSchedules(schedData || []);
+                setRepayments(repData || []);
+                setOpenArrears(arrearsData);
+              }
+            }
+          }
+        }
+
+      } catch (error) {
+        console.error('Error loading portal data:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadPortalData();
+  }, [router]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-on-surface-variant">Loading your portal...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user || !applicant) {
+    return null; // Will redirect to login
+  }
+
+  // State-based components
+  
   if (!applicant) {
     return (
       <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-8 text-center max-w-xl mx-auto shadow-sm my-8">
@@ -50,15 +208,6 @@ export default async function BorrowerPortalPage() {
     );
   }
 
-  // Fetch applications for this applicant
-  const { data: applications } = await admin
-    .from("applications")
-    .select("*")
-    .eq("applicant_id", applicant.id)
-    .order("created_at", { ascending: false });
-
-  const currentApp: ApplicationRow | null = applications?.[0] ?? null;
-
   if (!currentApp) {
     return (
       <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-8 text-center max-w-xl mx-auto shadow-sm my-8">
@@ -78,71 +227,6 @@ export default async function BorrowerPortalPage() {
       </div>
     );
   }
-
-  // Fetch related records in parallel
-  const [{ data: docs }, { data: decision }, { data: agreement }, { data: loan }] =
-    await Promise.all([
-      admin
-        .from("documents")
-        .select("*")
-        .eq("entity_type", "application")
-        .eq("entity_id", currentApp.id)
-        .order("created_at", { ascending: false }),
-      admin
-        .from("decisions")
-        .select("*")
-        .eq("application_id", currentApp.id)
-        .order("decided_at", { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-      admin
-        .from("agreements")
-        .select("*")
-        .eq("application_id", currentApp.id)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-      admin
-        .from("loans")
-        .select("*")
-        .eq("application_id", currentApp.id)
-        .maybeSingle(),
-    ]);
-
-  let schedules: ScheduleRow[] = [];
-  let repayments: RepaymentRow[] = [];
-  let openArrears: { days_past_due: number; penalty_charged: number } | null = null;
-
-  if (loan) {
-    const [{ data: schedData }, { data: repData }, { data: arrearsData }] = await Promise.all([
-      admin
-        .from("schedules")
-        .select("*")
-        .eq("loan_id", loan.id)
-        .order("instalment_number", { ascending: true }),
-      admin
-        .from("repayments")
-        .select("*")
-        .eq("loan_id", loan.id)
-        .order("paid_date", { ascending: false }),
-      admin
-        .from("arrears_events")
-        .select("days_past_due, penalty_charged")
-        .eq("loan_id", loan.id)
-        .eq("status", "open")
-        .order("days_past_due", { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-    ]);
-    schedules = schedData ?? [];
-    repayments = repData ?? [];
-    openArrears = arrearsData ?? null;
-  }
-
-  const documents: DocumentRow[] = docs ?? [];
-  const latestDecision: DecisionRow | null = decision ?? null;
-  const activeAgreement: AgreementRow | null = agreement ?? null;
-  const activeLoan: LoanRow | null = loan ?? null;
 
   return (
     <div className="space-y-6">
