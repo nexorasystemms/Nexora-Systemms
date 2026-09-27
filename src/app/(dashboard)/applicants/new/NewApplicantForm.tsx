@@ -1,36 +1,80 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createApplicant, type ApplicantFormState } from "../actions";
-
-const initialState: ApplicantFormState = { status: "idle" };
+import { createApplicant } from "@/lib/supabase/applications";
+import { getCurrentUser } from "@/lib/supabase/auth";
 
 export default function NewApplicantForm() {
   const router = useRouter();
-  const [state, formAction, pending] = useActionState(createApplicant, initialState);
+  const [formStatus, setFormStatus] = useState<"idle" | "loading" | "error" | "success" | "duplicate">("idle");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [duplicateApplicantId, setDuplicateApplicantId] = useState("");
 
-  useEffect(() => {
-    if (state.status === "success" && state.applicantId) {
-      router.push(`/applicants/${state.applicantId}`);
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setFormStatus("loading");
+    setErrorMessage("");
+    
+    const formData = new FormData(e.target as HTMLFormElement);
+    const currentUser = await getCurrentUser();
+    
+    if (!currentUser) {
+      setFormStatus("error");
+      setErrorMessage("You must be logged in to create an applicant");
+      return;
     }
-  }, [state, router]);
+
+    // Get tenant ID from user metadata or default tenant
+    const tenantId = currentUser.user_metadata?.tenant_id || "default-tenant-id"; // You'll need to handle this properly
+    
+    const result = await createApplicant({
+      tenant_id: tenantId,
+      full_name: formData.get("full_name") as string,
+      sex: formData.get("sex") as "M" | "F" | undefined,
+      id_type: formData.get("id_type") as "personal_id" | "passport",
+      id_number: formData.get("id_number") as string,
+      document_number: formData.get("document_number") as string | undefined,
+      mobile: formData.get("mobile") as string,
+      email: formData.get("email") as string | undefined,
+      residential_address: formData.get("residential_address") as string,
+      marital_status: formData.get("marital_status") as "single" | "married_in_cop" | "married_out_of_cop",
+      dependants_count: parseInt(formData.get("dependants_count") as string) || 0,
+      next_of_kin_name: formData.get("next_of_kin_name") as string,
+      next_of_kin_mobile: formData.get("next_of_kin_mobile") as string,
+      created_by: currentUser.id
+    });
+    
+    if (result.success) {
+      if (result.status === "duplicate") {
+        setFormStatus("duplicate");
+        setErrorMessage(result.message || "Duplicate applicant found");
+        setDuplicateApplicantId(result.data?.duplicateApplicantId || "");
+      } else {
+        setFormStatus("success");
+        router.push(`/applicants/${result.data?.applicantId}`);
+      }
+    } else {
+      setFormStatus("error");
+      setErrorMessage(result.error || "Failed to create applicant");
+    }
+  }
 
   return (
-    <form action={formAction} className="max-w-3xl space-y-6">
-      {state.status === "duplicate" && (
+    <form onSubmit={handleSubmit} className="max-w-3xl space-y-6">
+      {formStatus === "duplicate" && (
         <div className="rounded-md bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 text-sm">
-          {state.message}{" "}
-          {state.duplicateApplicantId && (
-            <a href={`/applicants/${state.duplicateApplicantId}`} className="underline font-medium">
+          {errorMessage}{" "}
+          {duplicateApplicantId && (
+            <a href={`/applicants/${duplicateApplicantId}`} className="underline font-medium">
               View existing applicant →
             </a>
           )}
         </div>
       )}
-      {state.status === "error" && (
+      {formStatus === "error" && (
         <div className="rounded-md bg-red-50 border border-red-200 text-danger px-4 py-3 text-sm">
-          {state.message}
+          {errorMessage}
         </div>
       )}
 
@@ -79,10 +123,10 @@ export default function NewApplicantForm() {
 
       <button
         type="submit"
-        disabled={pending}
+        disabled={formStatus === "loading"}
         className="rounded-md bg-brand-navy text-white text-sm font-medium px-5 py-2.5 hover:bg-brand-navy-light transition disabled:opacity-50"
       >
-        {pending ? "Saving…" : "Create applicant"}
+        {formStatus === "loading" ? "Saving…" : "Create applicant"}
       </button>
     </form>
   );

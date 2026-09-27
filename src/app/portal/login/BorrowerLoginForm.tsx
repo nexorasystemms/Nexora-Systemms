@@ -4,8 +4,11 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
-import { sendBorrowerPasswordReset } from "../actions";
+import { 
+  loginBorrower, 
+  sendPasswordResetCode, 
+  resetPassword 
+} from "@/lib/supabase/auth";
 
 type Stage = "login" | "forgot_password" | "reset_code" | "new_password";
 
@@ -41,48 +44,15 @@ export default function BorrowerLoginForm() {
     setError(null);
     setLoading(true);
 
-    const supabase = createClient();
-    const { data, error: signInError } = await supabase.auth.signInWithPassword({
-      email: email.trim().toLowerCase(),
-      password,
-    });
-
-    if (signInError || !data.user) {
-      setError(signInError?.message ?? "Invalid email or password.");
+    const result = await loginBorrower(email.trim().toLowerCase(), password);
+    
+    if (result.success) {
+      router.push("/portal");
+      router.refresh();
+    } else {
+      setError(result.error || "Login failed");
       setLoading(false);
-      return;
     }
-
-    // Verify role in public.users
-    const { data: profile, error: profileError } = await supabase
-      .from("users")
-      .select("role, status")
-      .eq("id", data.user.id)
-      .maybeSingle();
-
-    if (profileError || !profile) {
-      await supabase.auth.signOut();
-      setError("User profile not found. If you are a new applicant, please register first.");
-      setLoading(false);
-      return;
-    }
-
-    if (profile.status !== "active") {
-      await supabase.auth.signOut();
-      setError("Your email address has not been verified yet. Please check your email for a verification code.");
-      setLoading(false);
-      return;
-    }
-
-    if (profile.role !== "borrower") {
-      await supabase.auth.signOut();
-      setError("Staff members must sign in through the internal staff portal at /login.");
-      setLoading(false);
-      return;
-    }
-
-    router.push("/portal");
-    router.refresh();
   }
 
   async function handleForgotPasswordSubmit(e: React.FormEvent) {
@@ -90,9 +60,9 @@ export default function BorrowerLoginForm() {
     setError(null);
     setLoading(true);
 
-    const result = await sendBorrowerPasswordReset(email.trim().toLowerCase());
-    if (!result.ok) {
-      setError(result.message ?? "Could not send the reset code.");
+    const result = await sendPasswordResetCode(email.trim().toLowerCase());
+    if (!result.success) {
+      setError(result.error || "Could not send the reset code.");
       setLoading(false);
       return;
     }
@@ -118,34 +88,16 @@ export default function BorrowerLoginForm() {
     }
 
     setLoading(true);
-    const supabase = createClient();
 
-    // Verify the code and set new password
-    const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
-      email: email.trim().toLowerCase(),
-      token: code,
-      type: "recovery",
-    });
-
-    if (verifyError || !verifyData.user) {
-      setError("Invalid or expired password reset code.");
+    // Use client-side password reset
+    const result = await resetPassword(email.trim().toLowerCase(), code, newPassword);
+    if (!result.success) {
+      setError(result.error || "Failed to reset password");
       setLoading(false);
       return;
     }
 
-    // Update password using the authenticated session
-    const { error: updateError } = await supabase.auth.updateUser({
-      password: newPassword,
-    });
-
-    if (updateError) {
-      setError(updateError.message);
-      setLoading(false);
-      return;
-    }
-
-    // Sign out and go back to login
-    await supabase.auth.signOut();
+    // Success - go back to login
     setError(null);
     setStage("login");
     setEmail("");

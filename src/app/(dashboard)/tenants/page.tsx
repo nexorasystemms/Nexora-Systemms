@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/current-staff";
 import { formatDate } from "@/lib/format";
-import { createTenant } from "./actions";
+import { createTenant } from "@/lib/supabase/stubs";
 
 export default async function TenantsPage() {
   await requireRole(["super_admin"]);

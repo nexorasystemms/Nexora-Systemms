@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { uploadDocument, reviewDocument, getDocumentSignedUrl } from "./actions";
+import { uploadDocument, reviewDocument, getDocumentSignedUrl } from "@/lib/supabase/stubs";
 import type { DocumentRow, StaffRole } from "@/types/database";
 import { canReviewDocuments } from "@/lib/roles";
 

@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { borrowerSignOut } from "./actions";
+import SignOutButton from "./SignOutButton";
 
 export default async function BorrowerPortalLayout({
   children,
@@ -13,7 +13,7 @@ export default async function BorrowerPortalLayout({
 
   // If unauthenticated (e.g. on /portal/login or /portal/register), render children directly
   if (!user) {
-    return <>{children}</>;
+    return <div data-surface="portal">{children}</div>;
   }
 
   const { data: profile } = await supabase
@@ -33,62 +33,40 @@ export default async function BorrowerPortalLayout({
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
-      {/* Top Header */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link href="/portal" className="flex items-center gap-3">
-              <Image
-                src="/brand/nexora-logo-horizontal.png"
-                alt="Nexora Systems"
-                width={130}
-                height={35}
-                className="h-8 w-auto object-contain"
-                priority
-              />
-              <span className="hidden sm:inline-block text-xs font-semibold px-2 py-0.5 rounded-full bg-teal-50 text-teal-800 border border-teal-200">
+    <div data-surface="portal" className="min-h-screen bg-background flex flex-col">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-surface-container-lowest/95 backdrop-blur-xl shadow-sm">
+        <div className="h-20 max-w-5xl mx-auto px-gutter flex items-center justify-between gap-space-md">
+          <Link href="/portal" className="flex items-center gap-space-md min-w-0">
+            <Image src="/brand/nexora-logo-horizontal.png" alt="Nexora Systems" width={130} height={35} className="h-8 w-auto object-contain" priority />
+            <div className="hidden sm:flex flex-col min-w-0">
+              <span className="bg-surface-container-high text-primary px-space-sm py-0.5 rounded-full text-[11px] tracking-wider uppercase font-semibold w-fit">
                 TMU CashLoan Portal
               </span>
-            </Link>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <div className="text-right hidden sm:block">
-              <div className="text-sm font-semibold text-slate-800">
-                {applicant?.full_name ?? profile?.full_name ?? user.email}
-              </div>
-              <div className="text-xs text-slate-500">
-                {user.email}
-              </div>
+              <span className="text-[11px] text-on-surface-variant mt-0.5">NAMFISA Reg. 25/11/1138 · Windhoek, Namibia</span>
             </div>
+          </Link>
 
-            <form action={borrowerSignOut}>
-              <button
-                type="submit"
-                className="px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-100 text-xs font-medium text-slate-700 transition"
-              >
-                Sign Out
-              </button>
-            </form>
+          <div className="flex items-center gap-space-md">
+            <div className="hidden sm:flex flex-col text-right min-w-0">
+              <span className="text-sm font-semibold text-on-surface truncate">{applicant?.full_name ?? profile?.full_name ?? user.email}</span>
+              <span className="text-[12px] text-on-surface-variant truncate">{user.email}</span>
+            </div>
+            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-on-primary text-[18px]">person</span>
+            </div>
+            <SignOutButton />
           </div>
         </div>
       </header>
 
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8">
-        {children}
+      <main className="w-full pt-20 flex-1 bg-background">
+        <div className="max-w-5xl mx-auto px-gutter py-space-xl">{children}</div>
       </main>
 
-      {/* Footer */}
-      <footer className="bg-white border-t border-slate-200 py-6 text-center text-xs text-slate-500">
-        <div className="max-w-5xl mx-auto px-4">
-          <p className="font-medium text-slate-700">
-            TMU CashLoan CC — Registered Microlender (NAMFISA Reg. 25/11/1138)
-          </p>
-          <p className="mt-1">
-            Independence Avenue, Windhoek, Namibia · Powered by Nexora Intelligent Operations Platform
-          </p>
+      <footer className="bg-surface-container-lowest border-t border-outline-variant/40 py-space-lg text-center text-[12px] text-on-surface-variant">
+        <div className="max-w-5xl mx-auto px-gutter">
+          <p className="font-medium text-on-surface">TMU CashLoan CC — Registered Microlender (NAMFISA Reg. 25/11/1138)</p>
+          <p className="mt-1">Independence Avenue, Windhoek, Namibia · Powered by Nexora Intelligent Operations Platform</p>
         </div>
       </footer>
     </div>

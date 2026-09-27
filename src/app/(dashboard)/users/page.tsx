@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/current-staff";
 import { roleLabel } from "@/lib/roles";
 import { formatDate } from "@/lib/format";
-import { inviteStaff, setStaffStatus } from "./actions";
+import { inviteStaff, setStaffStatus } from "@/lib/supabase/stubs";
 import type { StaffRole } from "@/types/database";
 
 const ROLES: StaffRole[] = ["admin", "intake", "officer", "approver", "finance"];

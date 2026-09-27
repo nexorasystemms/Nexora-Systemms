@@ -2,9 +2,10 @@
 
 import { useState, useTransition } from "react";
 import {
-  saveEmployment, addCreditHistoryRow, removeCreditHistoryRow, saveBankDetails,
-  saveIncomeExpenditure, saveConsents, transitionApplication,
-} from "./actions";
+  saveEmployment, saveBankDetails, saveIncomeExpenditure,
+  addCreditHistoryRow, removeCreditHistoryRow, updateApplicationStatus
+} from "@/lib/supabase/applications";
+import { getCurrentUser } from "@/lib/supabase/auth";
 import { EXPENDITURE_LINE_CODES } from "@/lib/rules-engine/engine";
 import type { EmploymentRow, CreditHistoryRow, BankDetailsRow, IncomeExpenditureRow, ConsentRow, ApplicationStatus } from "@/types/database";
 import { formatNad } from "@/lib/format";
@@ -35,10 +36,47 @@ function TextInput({ label, name, defaultValue, type = "text", required }: { lab
 
 export function EmploymentSection({ applicationId, employment, disabled }: { applicationId: string; employment: EmploymentRow | null; disabled: boolean }) {
   const [pending, startTransition] = useTransition();
+  const [error, setError] = useState("");
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    
+    startTransition(async () => {
+      const formData = new FormData(e.target as HTMLFormElement);
+      const currentUser = await getCurrentUser();
+      
+      if (!currentUser) {
+        setError("You must be logged in");
+        return;
+      }
+      
+      const result = await saveEmployment(applicationId, {
+        employer_name: formData.get("employer_name") as string,
+        job_title: formData.get("job_title") as string | undefined,
+        employment_type: formData.get("employment_type") as "permanent" | "temporary" | "contract" | "self_employed" | undefined,
+        monthly_salary: formData.get("monthly_salary") ? parseFloat(formData.get("monthly_salary") as string) : undefined,
+        years_employed: formData.get("years_employed") ? parseFloat(formData.get("years_employed") as string) : undefined,
+      }, currentUser.id);
+      
+      if (!result.success) {
+        setError(result.error || "Failed to save employment information");
+      } else {
+        // Reload the page to show updated data
+        window.location.reload();
+      }
+    });
+  }
+
   return (
     <Card title="Employment">
+      {error && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded">
+          {error}
+        </div>
+      )}
       <form
-        action={(fd) => startTransition(() => saveEmployment(applicationId, fd))}
+        onSubmit={handleSubmit}
         className="grid grid-cols-1 sm:grid-cols-2 gap-3"
       >
         <TextInput label="Employer name" name="employer_name" defaultValue={employment?.employer_name} required />

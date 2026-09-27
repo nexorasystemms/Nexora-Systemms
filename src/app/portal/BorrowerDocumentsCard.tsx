@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import type { DocumentRow } from "@/types/database";
-import { borrowerUploadDocument } from "./actions";
+import { borrowerUploadDocument } from "@/lib/supabase/stubs";
 
 const DOC_TYPES: [string, string][] = [
   ["id", "National ID / Passport"],
@@ -13,9 +13,9 @@ const DOC_TYPES: [string, string][] = [
 ];
 
 const STATUS_STYLE: Record<string, { bg: string; label: string }> = {
-  pending: { bg: "bg-amber-100 text-amber-800 border-amber-200", label: "Under Review" },
-  reviewed_accepted: { bg: "bg-emerald-100 text-emerald-800 border-emerald-200", label: "Verified & Accepted" },
-  rejected: { bg: "bg-red-100 text-red-800 border-red-200", label: "Needs Replacement" },
+  pending: { bg: "bg-secondary-container text-on-secondary-container", label: "Under Review" },
+  reviewed_accepted: { bg: "bg-tertiary-fixed/40 text-tertiary-container", label: "Verified & Accepted" },
+  rejected: { bg: "bg-error-container text-on-error-container", label: "Needs Replacement" },
 };
 
 export default function BorrowerDocumentsCard({
@@ -58,18 +58,15 @@ export default function BorrowerDocumentsCard({
   }
 
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs">
-      <div className="mb-4">
-        <h3 className="text-base font-bold text-slate-900">Application Documents</h3>
-        <p className="text-xs text-slate-500">
-          Required verification documents for your loan application.
-        </p>
+    <div className="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm">
+      <div className="mb-space-md">
+        <h3 className="text-base font-bold text-on-surface">Application Documents</h3>
+        <p className="text-[12px] text-on-surface-variant">Required verification documents for your loan application.</p>
       </div>
 
-      {/* List of uploaded documents */}
-      <div className="space-y-3 mb-6">
+      <div className="space-y-space-sm mb-space-lg">
         {documents.length === 0 ? (
-          <div className="text-xs text-slate-400 py-4 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200">
+          <div className="text-[12px] text-on-surface-variant py-space-md text-center bg-surface-container-low rounded-xl border border-dashed border-outline-variant/50">
             No documents uploaded yet. Use the form below to upload your documents.
           </div>
         ) : (
@@ -78,24 +75,15 @@ export default function BorrowerDocumentsCard({
             const typeLabel = DOC_TYPES.find(([v]) => v === doc.doc_type)?.[1] ?? doc.doc_type;
 
             return (
-              <div
-                key={doc.id}
-                className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2"
-              >
+              <div key={doc.id} className="p-space-md rounded-xl bg-surface-container-low flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm">
                 <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-slate-800">{typeLabel}</span>
-                    <span
-                      className={`text-[11px] px-2 py-0.5 rounded-full font-medium border ${meta.bg}`}
-                    >
-                      {meta.label}
-                    </span>
+                  <div className="flex items-center gap-space-sm">
+                    <span className="text-sm font-semibold text-on-surface">{typeLabel}</span>
+                    <span className={`text-[11px] px-space-sm py-0.5 rounded-full font-medium ${meta.bg}`}>{meta.label}</span>
                   </div>
-                  <div className="text-[11px] text-slate-400 mt-0.5">
-                    Uploaded {new Date(doc.created_at).toLocaleDateString()}
-                  </div>
+                  <div className="text-[11px] text-on-surface-variant mt-0.5">Uploaded {new Date(doc.created_at).toLocaleDateString()}</div>
                   {doc.review_notes && doc.status === "rejected" && (
-                    <div className="mt-1 text-xs text-red-600 bg-red-50 p-2 rounded-md border border-red-100">
+                    <div className="mt-1 text-[12px] text-on-error-container bg-error-container p-space-xs rounded-md">
                       <strong>Officer Note:</strong> {doc.review_notes}
                     </div>
                   )}
@@ -106,53 +94,39 @@ export default function BorrowerDocumentsCard({
         )}
       </div>
 
-      {/* Upload Box */}
       {canUpload && (
-        <div className="pt-5 border-t border-slate-100">
-          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">
-            Upload or Replace a Document
-          </h4>
+        <div className="pt-space-lg border-t border-outline-variant/30">
+          <h4 className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant mb-space-sm">Upload or Replace a Document</h4>
 
-          {error && (
-            <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
-              {error}
-            </div>
-          )}
-
+          {error && <div className="mb-space-sm p-space-sm bg-error-container rounded-lg text-[12px] text-on-error-container">{error}</div>}
           {success && (
-            <div className="mb-3 p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-700">
+            <div className="mb-space-sm p-space-sm bg-tertiary-fixed/30 rounded-lg text-[12px] text-tertiary-container">
               Document uploaded successfully! Our loan officers will review it shortly.
             </div>
           )}
 
-          <form onSubmit={handleUpload} className="space-y-3">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <form onSubmit={handleUpload} className="space-y-space-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-space-sm">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Document Type
-                </label>
+                <label className="block text-[12px] font-semibold text-on-surface mb-1">Document Type</label>
                 <select
                   value={docType}
                   onChange={(e) => setDocType(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-brand-blue bg-white"
+                  className="w-full px-space-sm py-2 rounded-lg bg-surface-container-low text-[12px] focus:outline-none focus:ring-2 focus:ring-primary"
                 >
                   {DOC_TYPES.map(([val, label]) => (
-                    <option key={val} value={val}>
-                      {label}
-                    </option>
+                    <option key={val} value={val}>{label}</option>
                   ))}
                 </select>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Select Photo or PDF
-                </label>
+                <label className="block text-[12px] font-semibold text-on-surface mb-1">Select Photo or PDF</label>
                 <input
                   type="file"
                   accept="image/*,.pdf"
                   onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                  className="w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200"
+                  className="w-full text-[12px] text-on-surface-variant file:mr-2 file:py-1.5 file:px-space-sm file:rounded-md file:border-0 file:text-[12px] file:font-semibold file:bg-surface-container-high file:text-on-surface"
                 />
               </div>
             </div>
@@ -160,7 +134,7 @@ export default function BorrowerDocumentsCard({
             <button
               type="submit"
               disabled={pending || !file}
-              className="px-4 py-2 bg-brand-navy hover:bg-slate-800 text-white rounded-lg text-xs font-semibold transition disabled:opacity-50"
+              className="px-space-md py-2 bg-primary text-on-primary rounded-lg text-[12px] font-semibold transition disabled:opacity-50 hover:opacity-90"
             >
               {pending ? "Uploading..." : "Upload Document"}
             </button>

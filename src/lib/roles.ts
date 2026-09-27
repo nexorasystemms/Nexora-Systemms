@@ -67,18 +67,41 @@ export function canUnmaskT3(role: StaffRole): boolean {
   return role === "approver" || role === "finance" || isAdminTier(role);
 }
 
-export const NAV_ITEMS: Array<{
-  href: string;
-  label: string;
-  visible: (role: StaffRole) => boolean;
+export type NavBadge = "applications" | "pilotStatus" | null;
+
+export const NAV_GROUPS: Array<{
+  group: string;
+  items: Array<{
+    href: string;
+    label: string;
+    icon: string;
+    badge?: NavBadge;
+    visible: (role: StaffRole) => boolean;
+  }>;
 }> = [
-  { href: "/", label: "Pipeline", visible: () => true },
-  { href: "/applicants", label: "Applicants", visible: canIntake },
-  { href: "/applications/new", label: "New Application", visible: canIntake },
-  { href: "/arrears", label: "Arrears", visible: () => true },
-  { href: "/reports", label: "Reports", visible: () => true },
-  { href: "/audit-log", label: "Audit Log", visible: canViewAuditLog },
-  { href: "/policy-params", label: "Policy Parameters", visible: canManagePolicyParams },
-  { href: "/users", label: "Staff & Roles", visible: canManageUsers },
-  { href: "/tenants", label: "Tenants", visible: (role) => role === "super_admin" },
+  {
+    group: "Core Lending Operations",
+    items: [
+      { href: "/", label: "Applications", icon: "view_kanban", badge: "applications", visible: () => true },
+      { href: "/applicants", label: "New Intake", icon: "person_add", visible: canIntake },
+      { href: "/arrears", label: "Servicing & Arrears", icon: "history_toggle_off", visible: () => true },
+      { href: "/reports", label: "Reports", icon: "monitoring", visible: () => true },
+    ],
+  },
+  {
+    group: "Governance & Audit",
+    items: [
+      { href: "/audit-log", label: "Audit Chaining", icon: "lock_clock", visible: canViewAuditLog },
+      { href: "/consents", label: "Consents & KYC", icon: "verified_user", visible: canViewAuditLog },
+      { href: "/policy-params", label: "Policy Parameters", icon: "tune", visible: canManagePolicyParams },
+      { href: "/pilot-guardrails", label: "Pilot Guardrails", icon: "shield", badge: "pilotStatus", visible: canManagePolicyParams },
+    ],
+  },
+  {
+    group: "Administration",
+    items: [
+      { href: "/users", label: "Staff & Roles", icon: "admin_panel_settings", visible: canManageUsers },
+      { href: "/tenants", label: "Tenants", icon: "domain", visible: (role) => role === "super_admin" },
+    ],
+  },
 ];

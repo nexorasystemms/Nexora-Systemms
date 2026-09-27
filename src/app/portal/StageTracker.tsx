@@ -7,6 +7,9 @@ interface StageTrackerProps {
   nextPayDate: string | null;
   amountRequested: number;
   approvedAmount?: number | null;
+  declineReasonCode?: string | null;
+  arrearsDaysPastDue?: number | null;
+  arrearsPenalty?: number | null;
 }
 
 interface Step {
@@ -23,19 +26,21 @@ const STEPS: Step[] = [
   { id: 5, label: "Disbursed", description: "Funds paid out" },
 ];
 
+function money(n: number) {
+  return `N$${n.toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+}
+
 export default function StageTracker({
-  status,
-  nextPayDate,
-  amountRequested,
-  approvedAmount,
+  status, nextPayDate, amountRequested, approvedAmount, declineReasonCode, arrearsDaysPastDue, arrearsPenalty,
 }: StageTrackerProps) {
-  // Determine current active step (1 to 5)
-  let currentStep = 1;
   const isDeclined = status === "declined";
   const isAwaitingDocs = status === "awaiting_documents";
   const isSettled = status === "settled";
   const isInArrears = status === "in_arrears";
+  const isHandedOver = status === "handed_over";
+  const isCounterOffer = status === "approved_with_changes" && approvedAmount != null && approvedAmount !== amountRequested;
 
+  let currentStep = 1;
   switch (status) {
     case "draft":
     case "submitted":
@@ -53,111 +58,82 @@ export default function StageTracker({
     case "agreement_generated":
       currentStep = 4;
       break;
-    case "agreement_accepted":
-    case "disbursed":
-    case "performing":
-    case "in_arrears":
-    case "settled":
-    case "handed_over":
-      currentStep = 5;
-      break;
     default:
-      currentStep = 1;
+      currentStep = 5; // agreement_accepted, disbursed, performing, in_arrears, settled, handed_over
   }
 
+  const headline = isDeclined
+    ? "Application Decision: Declined"
+    : isSettled
+    ? "Loan Completed & Settled"
+    : isHandedOver
+    ? "Account Handed Over for Collection"
+    : isInArrears
+    ? "Account In Arrears — Action Needed"
+    : isAwaitingDocs
+    ? "Action Required: Additional Documents"
+    : isCounterOffer
+    ? "Counter-Offer: Different Terms Approved"
+    : status === "agreement_generated"
+    ? "Action Required: Sign Loan Agreement"
+    : status === "disbursed" || status === "performing"
+    ? "Active Loan — Performing"
+    : `Stage ${currentStep} of 5: ${STEPS[currentStep - 1]?.label}`;
+
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b border-slate-100 gap-2">
+    <div className="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-space-md border-b border-outline-variant/30 gap-space-sm">
         <div>
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-            Current Application Progress
-          </span>
-          <h2 className="text-lg font-bold text-slate-900 mt-0.5">
-            {isDeclined
-              ? "Application Decision: Declined"
-              : isSettled
-              ? "Loan Completed & Settled 🎉"
-              : isInArrears
-              ? "Account In Arrears"
-              : isAwaitingDocs
-              ? "Action Required: Additional Documents"
-              : status === "agreement_generated"
-              ? "Action Required: Sign Loan Agreement"
-              : status === "disbursed" || status === "performing"
-              ? "Active Loan — Performing"
-              : `Stage ${currentStep} of 5: ${STEPS[currentStep - 1]?.label}`}
-          </h2>
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant">Current Application Progress</span>
+          <h2 className="text-lg font-bold text-on-surface mt-0.5">{headline}</h2>
         </div>
 
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-slate-500">Requested:</span>
-          <span className="text-sm font-bold text-slate-900">
-            N${amountRequested.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-          </span>
-          {approvedAmount && approvedAmount !== amountRequested && (
-            <span className="text-xs px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full font-medium border border-emerald-200">
-              Approved: N${approvedAmount.toFixed(2)}
+        <div className="flex items-center gap-space-sm">
+          <span className="text-[12px] text-on-surface-variant">Requested:</span>
+          <span className="text-sm font-bold text-on-surface font-mono">{money(amountRequested)}</span>
+          {approvedAmount != null && approvedAmount !== amountRequested && (
+            <span className="text-[11px] px-space-sm py-0.5 bg-secondary-container text-on-secondary-container rounded-full font-semibold">
+              Approved: {money(approvedAmount)}
             </span>
           )}
         </div>
       </div>
 
-      {/* Visual Stepper */}
-      <div className="py-6 overflow-x-auto">
+      <div className="py-space-lg overflow-x-auto">
         <div className="min-w-[500px]">
           <div className="relative flex items-center justify-between">
-            {/* Background connecting line */}
-            <div className="absolute left-0 top-1/2 -translate-y-1/2 h-1 w-full bg-slate-100 -z-0" />
-            {/* Active connecting line */}
+            <div className="absolute left-0 top-1/2 -translate-y-1/2 h-1 w-full bg-surface-container -z-0" />
             <div
-              className={`absolute left-0 top-1/2 -translate-y-1/2 h-1 -z-0 transition-all duration-500 ${
-                isDeclined ? "bg-red-300" : "bg-teal-600"
-              }`}
-              style={{
-                width: isDeclined
-                  ? "50%"
-                  : `${((currentStep - 1) / (STEPS.length - 1)) * 100}%`,
-              }}
+              className={`absolute left-0 top-1/2 -translate-y-1/2 h-1 -z-0 transition-all duration-500 ${isDeclined ? "bg-error/40" : "bg-primary"}`}
+              style={{ width: isDeclined ? "50%" : `${((currentStep - 1) / (STEPS.length - 1)) * 100}%` }}
             />
-
             {STEPS.map((step) => {
-              const isCompleted = isDeclined
-                ? step.id < 3
-                : currentStep > step.id || (currentStep === 5 && step.id === 5);
+              const isCompleted = isDeclined ? step.id < 3 : currentStep > step.id || (currentStep === 5 && step.id === 5);
               const isCurrent = isDeclined ? step.id === 3 : currentStep === step.id;
-
               return (
                 <div key={step.id} className="relative z-10 flex flex-col items-center">
                   <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all shadow-xs ${
+                    className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all shadow-sm ${
                       isDeclined && isCurrent
-                        ? "bg-red-600 text-white ring-4 ring-red-100"
+                        ? "bg-error text-on-error"
                         : isCompleted
-                        ? "bg-teal-700 text-white"
+                        ? "bg-primary-container text-on-primary"
                         : isCurrent
-                        ? "bg-white text-teal-700 border-2 border-teal-700 ring-4 ring-teal-50"
-                        : "bg-white text-slate-400 border-2 border-slate-200"
+                        ? "bg-surface-container-lowest text-primary border-2 border-primary"
+                        : "bg-surface-container-lowest text-outline border-2 border-outline-variant"
                     }`}
                   >
                     {isDeclined && isCurrent ? (
-                      "✕"
+                      <span className="material-symbols-outlined text-[18px]">close</span>
                     ) : isCompleted ? (
-                      "✓"
+                      <span className="material-symbols-outlined text-[18px]">check</span>
                     ) : (
                       step.id
                     )}
                   </div>
                   <div className="text-center mt-2">
-                    <div
-                      className={`text-xs font-semibold ${
-                        isCurrent ? "text-slate-900" : "text-slate-500"
-                      }`}
-                    >
-                      {step.label}
-                    </div>
-                    <div className="text-[10px] text-slate-400 hidden sm:block max-w-[90px]">
-                      {step.description}
-                    </div>
+                    <div className={`text-[12px] font-semibold ${isCurrent ? "text-on-surface" : "text-on-surface-variant"}`}>{step.label}</div>
+                    <div className="text-[10px] text-outline hidden sm:block max-w-[90px]">{step.description}</div>
                   </div>
                 </div>
               );
@@ -166,42 +142,43 @@ export default function StageTracker({
         </div>
       </div>
 
-      {/* Informative Status Banner */}
-      <div
-        className={`rounded-xl p-4 text-xs ${
-          isDeclined
-            ? "bg-red-50 border border-red-200 text-red-800"
-            : isAwaitingDocs
-            ? "bg-amber-50 border border-amber-200 text-amber-800"
-            : status === "agreement_generated"
-            ? "bg-blue-50 border border-blue-200 text-blue-800"
-            : status === "disbursed" || status === "performing"
-            ? "bg-emerald-50 border border-emerald-200 text-emerald-800"
-            : "bg-slate-50 border border-slate-200 text-slate-700"
-        }`}
+      <div className={`rounded-xl p-space-md text-[12px] ${
+        isDeclined || isHandedOver
+          ? "bg-error-container text-on-error-container"
+          : isInArrears
+          ? "bg-error-container/60 text-on-error-container"
+          : isAwaitingDocs || isCounterOffer
+          ? "bg-secondary-container/50 text-on-secondary-container"
+          : status === "agreement_generated"
+          ? "bg-secondary-container/50 text-on-secondary-container"
+          : status === "disbursed" || status === "performing" || isSettled
+          ? "bg-tertiary-fixed/30 text-tertiary-container"
+          : "bg-surface-container-low text-on-surface"
+      }`}
       >
-        <div className="flex items-start gap-2.5">
-          <span className="text-base leading-none">
-            {isDeclined
-              ? "⚠️"
-              : isAwaitingDocs
-              ? "📄"
-              : status === "agreement_generated"
-              ? "✍️"
-              : status === "disbursed" || status === "performing"
-              ? "✅"
-              : "ℹ️"}
+        <div className="flex items-start gap-space-sm">
+          <span className="material-symbols-outlined text-[18px] shrink-0">
+            {isDeclined ? "error" : isHandedOver ? "gavel" : isInArrears ? "warning" : isAwaitingDocs ? "description" : isCounterOffer ? "handshake" :
+              status === "agreement_generated" ? "draw" : status === "disbursed" || status === "performing" ? "check_circle" : isSettled ? "celebration" : "info"}
           </span>
           <div className="flex-1">
             <div className="font-semibold text-sm mb-0.5">
               {isDeclined
                 ? "Your application was declined."
+                : isHandedOver
+                ? "This account has been handed over for collection."
+                : isInArrears
+                ? `Your account is ${arrearsDaysPastDue ?? "several"} day(s) past due.`
                 : isAwaitingDocs
                 ? "Additional documentation requested by loan officer."
+                : isCounterOffer
+                ? "We could not approve the full amount requested."
                 : status === "agreement_generated"
                 ? "Your loan agreement is ready for digital signature."
                 : status === "disbursed" || status === "performing"
                 ? "Loan active and performing."
+                : isSettled
+                ? "This loan has been fully repaid."
                 : status === "under_review"
                 ? "Loan officer is reviewing your paperwork."
                 : status === "assessed"
@@ -210,13 +187,21 @@ export default function StageTracker({
             </div>
             <p className="leading-relaxed">
               {isDeclined
-                ? "Unfortunately, this request did not satisfy our affordability policy criteria. You may contact your loan officer for further details."
+                ? `Reason: ${declineReasonCode?.replaceAll("_", " ") ?? "did not meet affordability criteria"}. You may contact your loan officer for details, or reapply once your circumstances change.`
+                : isHandedOver
+                ? "Please contact TMU CashLoan CC directly to arrange settlement and avoid further collection action."
+                : isInArrears
+                ? `A default charge of ${arrearsPenalty != null ? money(arrearsPenalty) : "a penalty"} has accrued. Please make a payment as soon as possible — go to Repayment Schedule below for the amount due.`
                 : isAwaitingDocs
-                ? "Please see the Documents tab below to view which document requires re-upload."
+                ? "Please see the Documents section below to view which document requires re-upload."
+                : isCounterOffer
+                ? "Review the approved amount and term below — accepting the agreement means accepting these adjusted terms, not your original request."
                 : status === "agreement_generated"
-                ? "Review the loan agreement terms below and click 'Accept Loan Agreement' to finalize your disbursement."
+                ? "Review the loan agreement terms below and accept it to proceed to disbursement."
                 : status === "disbursed" || status === "performing"
                 ? `Disbursement recorded. Your repayment is due on ${nextPayDate ?? "your scheduled pay date"}.`
+                : isSettled
+                ? "Thank you for banking with TMU CashLoan CC. You're welcome to apply again any time."
                 : status === "under_review"
                 ? "Our team is reviewing your payslip, bank statement, and employment details. We will notify you once assessed."
                 : "Thank you for applying with TMU CashLoan CC. Our team will review your application shortly."}

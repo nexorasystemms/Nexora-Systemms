@@ -27,25 +27,23 @@ export default async function BorrowerPortalPage() {
 
   if (!applicant) {
     return (
-      <div className="bg-white border border-slate-200 rounded-2xl p-8 text-center max-w-xl mx-auto shadow-xs my-8">
-        <div className="w-12 h-12 rounded-full bg-teal-50 text-teal-700 flex items-center justify-center mx-auto mb-4 text-xl">
-          👋
+      <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-8 text-center max-w-xl mx-auto shadow-sm my-8">
+        <div className="w-12 h-12 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center mx-auto mb-space-md">
+          <span className="material-symbols-outlined text-[24px]">waving_hand</span>
         </div>
-        <h2 className="text-xl font-bold text-slate-900 mb-2">
-          Welcome, {user.full_name}!
-        </h2>
-        <p className="text-sm text-slate-500 mb-6 leading-relaxed">
+        <h2 className="text-xl font-bold text-on-surface mb-space-sm">Welcome, {user.full_name}!</h2>
+        <p className="text-sm text-on-surface-variant mb-space-lg leading-relaxed">
           Your online account is active. We did not find an existing loan application linked to your profile yet.
           You can start an online application immediately or visit our branch in Windhoek.
         </p>
         <Link
           href="/portal/apply"
-          className="inline-block mb-6 px-6 py-2.5 rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs shadow-xs transition"
+          className="inline-block mb-space-lg px-space-lg py-space-sm rounded-xl bg-primary text-on-primary font-bold text-[13px] shadow-sm hover:opacity-90 transition"
         >
           Start Cash Loan Application →
         </Link>
-        <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-600 text-left">
-          <div className="font-semibold text-slate-800 mb-1">Applying in person?</div>
+        <div className="p-space-md bg-surface-container-low rounded-xl border border-outline-variant/30 text-[12px] text-on-surface-variant text-left">
+          <div className="font-semibold text-on-surface mb-1">Applying in person?</div>
           Visit TMU CashLoan CC at Independence Avenue, Windhoek with your Namibian ID, latest payslip, and 3-month bank statement.
         </div>
       </div>
@@ -63,17 +61,17 @@ export default async function BorrowerPortalPage() {
 
   if (!currentApp) {
     return (
-      <div className="bg-white border border-slate-200 rounded-2xl p-8 text-center max-w-xl mx-auto shadow-xs my-8">
-        <div className="w-12 h-12 rounded-full bg-blue-50 text-brand-blue flex items-center justify-center mx-auto mb-4 text-xl">
-          📋
+      <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-8 text-center max-w-xl mx-auto shadow-sm my-8">
+        <div className="w-12 h-12 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center mx-auto mb-space-md">
+          <span className="material-symbols-outlined text-[24px]">assignment</span>
         </div>
-        <h2 className="text-xl font-bold text-slate-900 mb-2">Ready to Apply?</h2>
-        <p className="text-sm text-slate-500 mb-6 leading-relaxed">
+        <h2 className="text-xl font-bold text-on-surface mb-space-sm">Ready to Apply?</h2>
+        <p className="text-sm text-on-surface-variant mb-space-lg leading-relaxed">
           Hello {applicant.full_name}, you currently have no active loan applications under review at TMU CashLoan CC.
         </p>
         <Link
           href="/portal/apply"
-          className="inline-block px-6 py-2.5 rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs shadow-xs transition"
+          className="inline-block px-space-lg py-space-sm rounded-xl bg-primary text-on-primary font-bold text-[13px] shadow-sm hover:opacity-90 transition"
         >
           Apply for a Cash Loan →
         </Link>
@@ -113,9 +111,10 @@ export default async function BorrowerPortalPage() {
 
   let schedules: ScheduleRow[] = [];
   let repayments: RepaymentRow[] = [];
+  let openArrears: { days_past_due: number; penalty_charged: number } | null = null;
 
   if (loan) {
-    const [{ data: schedData }, { data: repData }] = await Promise.all([
+    const [{ data: schedData }, { data: repData }, { data: arrearsData }] = await Promise.all([
       admin
         .from("schedules")
         .select("*")
@@ -126,9 +125,18 @@ export default async function BorrowerPortalPage() {
         .select("*")
         .eq("loan_id", loan.id)
         .order("paid_date", { ascending: false }),
+      admin
+        .from("arrears_events")
+        .select("days_past_due, penalty_charged")
+        .eq("loan_id", loan.id)
+        .eq("status", "open")
+        .order("days_past_due", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
     ]);
     schedules = schedData ?? [];
     repayments = repData ?? [];
+    openArrears = arrearsData ?? null;
   }
 
   const documents: DocumentRow[] = docs ?? [];
@@ -144,30 +152,27 @@ export default async function BorrowerPortalPage() {
       </Suspense>
       
       {/* Top Welcome Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm pb-space-sm">
         <div>
-          <h1 className="text-2xl font-extrabold text-slate-900">
+          <h1 className="font-headline text-2xl font-bold text-primary tracking-tight">
             Welcome back, {applicant.full_name}
           </h1>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Application Reference:{" "}
-            <span className="font-mono font-semibold text-slate-700">
-              {currentApp.reference_number}
-            </span>{" "}
-            · Submitted {new Date(currentApp.created_at).toLocaleDateString()}
+          <p className="text-[12px] text-on-surface-variant mt-0.5 font-mono">
+            Application Reference: <span className="font-semibold text-on-surface">{currentApp.reference_number}</span>
+            {" "}· Submitted {new Date(currentApp.created_at).toLocaleDateString()}
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-space-sm">
           {(currentApp.status === "settled" || currentApp.status === "declined" || currentApp.status === "withdrawn") && (
             <Link
               href="/portal/apply"
-              className="px-3 py-1 rounded-lg bg-teal-700 hover:bg-teal-800 text-white text-xs font-semibold shadow-xs transition"
+              className="px-space-md py-1.5 rounded-lg bg-primary text-on-primary text-[12px] font-semibold shadow-sm hover:opacity-90 transition"
             >
               + New Application
             </Link>
           )}
-          <span className="px-3 py-1 rounded-full text-xs font-semibold bg-white border border-slate-200 text-slate-700 shadow-2xs">
+          <span className="px-space-md py-1.5 rounded-full text-[12px] font-semibold bg-primary-container text-on-primary shadow-sm">
             Term: {currentApp.term_months} {currentApp.term_months === 1 ? "month" : "months"} (
             {currentApp.product_type === "once_off" ? "Once-off Payday" : "Monthly Instalments"})
           </span>
@@ -180,6 +185,9 @@ export default async function BorrowerPortalPage() {
         nextPayDate={currentApp.next_pay_date}
         amountRequested={Number(currentApp.amount_requested)}
         approvedAmount={latestDecision?.amount_approved}
+        declineReasonCode={latestDecision?.reason_code}
+        arrearsDaysPastDue={openArrears?.days_past_due}
+        arrearsPenalty={openArrears?.penalty_charged}
       />
 
       {/* 2. Active Loan Repayment Card (If Disbursed / Performing / In Arrears) */}

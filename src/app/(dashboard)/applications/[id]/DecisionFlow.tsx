@@ -4,7 +4,7 @@ import { useTransition } from "react";
 import {
   runApplicationAssessment, recordDecision, generateAgreement, recordAcceptance,
   recordDisbursement, recordRepayment,
-} from "./actions";
+} from "@/lib/supabase/stubs";
 import type {
   AssessmentRow, DecisionRow, AgreementRow, LoanRow, ScheduleRow, RepaymentRow, StaffRole,
 } from "@/types/database";

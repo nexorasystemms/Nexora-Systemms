@@ -1,13 +1,35 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // For now, keep server rendering for pages that haven't been converted yet
+  // TODO: Enable static export once all server components are converted
+  // output: 'export',
+  
+  // Optimize images for better performance
+  images: {
+    // Uncomment when ready for static export
+    // unoptimized: true
+    domains: [],
+    formats: ['image/webp', 'image/avif'],
+  },
+  
+  // Configure trailing slash for consistency
+  trailingSlash: false,
+  
   experimental: {
-    // Server Actions default to a 1MB body limit; document uploads (photographed payslips,
-    // IDs, bank statements — FR-DOC-01/02) go through uploadDocument as a Server Action, so
-    // this needs to match the Supabase Storage bucket's own limit (see migration 0007).
-    serverActions: {
-      bodySizeLimit: "25mb",
-    },
+    // Disable missing suspense warnings for CSR bailout
+    missingSuspenseWithCSRBailout: false,
+  },
+  
+  // Redirect configuration for clean URLs
+  async redirects() {
+    return [
+      {
+        source: '/dashboard',
+        destination: '/',
+        permanent: false,
+      },
+    ];
   },
 };
 

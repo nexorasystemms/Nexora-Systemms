@@ -1,21 +1,63 @@
 "use client";
 
-import { useActionState } from "react";
-import { createApplication, type NewApplicationState } from "../actions";
-
-const initialState: NewApplicationState = { status: "idle" };
+import { useState } from "react";
+import { createApplication } from "@/lib/supabase/applications";
+import { getCurrentUser } from "@/lib/supabase/auth";
 
 export default function NewApplicationForm({ applicantId, applicantName }: { applicantId: string; applicantName: string }) {
-  const [state, formAction, pending] = useActionState(createApplication, initialState);
+  const [formStatus, setFormStatus] = useState<"idle" | "loading" | "error" | "success">("idle");
+  const [errorMessage, setErrorMessage] = useState("");
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setFormStatus("loading");
+    setErrorMessage("");
+    
+    const formData = new FormData(e.target as HTMLFormElement);
+    const currentUser = await getCurrentUser();
+    
+    if (!currentUser) {
+      setFormStatus("error");
+      setErrorMessage("You must be logged in to create an application");
+      return;
+    }
+
+    // Get tenant ID from user metadata or default tenant
+    const tenantId = currentUser.user_metadata?.tenant_id || "default-tenant-id"; // You'll need to handle this properly
+    
+    const result = await createApplication({
+      tenant_id: tenantId,
+      applicant_id: applicantId,
+      amount_requested: parseFloat(formData.get("amount_requested") as string),
+      term_months: parseInt(formData.get("term_months") as string),
+      product_type: formData.get("product_type") as "once_off" | "instalment",
+      next_pay_date: formData.get("next_pay_date") as string | undefined,
+      purpose_category: formData.get("purpose_category") as string | undefined,
+      purpose_text: formData.get("purpose_text") as string | undefined,
+      referral_source: formData.get("referral_source") as string | undefined,
+      has_prior_credit: formData.get("has_prior_credit") as "no" | "had" | "have" | undefined,
+      created_by: currentUser.id,
+      duplicate_override_reason: formData.get("duplicate_override_reason") as string | undefined
+    });
+    
+    if (result.success) {
+      setFormStatus("success");
+      // Redirect to the new application
+      window.location.href = `/applications/${result.data?.applicationId}`;
+    } else {
+      setFormStatus("error");
+      setErrorMessage(result.error || "Failed to create application");
+    }
+  }
 
   return (
-    <form id="new-application-form" action={formAction} className="max-w-2xl space-y-6">
+    <form id="new-application-form" onSubmit={handleSubmit} className="max-w-2xl space-y-6">
       <input type="hidden" name="applicant_id" value={applicantId} />
 
-      {state.status === "error" && (
+      {formStatus === "error" && (
         <div className="rounded-md bg-red-50 border border-red-200 text-danger px-4 py-3 text-sm space-y-2">
-          <p>{state.message}</p>
-          {state.message?.includes("R-15") && (
+          <p>{errorMessage}</p>
+          {errorMessage?.includes("R-15") && (
             <div>
               <label className="block text-xs font-medium mb-1">Override reason (compliance/admin only)</label>
               <input
@@ -82,10 +124,10 @@ export default function NewApplicationForm({ applicantId, applicantName }: { app
 
       <button
         type="submit"
-        disabled={pending}
+        disabled={formStatus === "loading"}
         className="rounded-md bg-brand-navy text-white text-sm font-medium px-5 py-2.5 hover:bg-brand-navy-light transition disabled:opacity-50"
       >
-        {pending ? "Creating…" : "Create application"}
+        {formStatus === "loading" ? "Creating…" : "Create application"}
       </button>
     </form>
   );

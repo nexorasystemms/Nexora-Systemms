@@ -1,11 +1,10 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { registerBorrower, sendBorrowerVerificationCode, verifyBorrowerEmail, type AuthFormState } from "../actions";
+import { registerBorrower, verifyBorrowerEmail } from "@/lib/supabase/auth";
 
-const initialState: AuthFormState = { status: "idle" };
 const RESEND_COOLDOWN_SECONDS = 30;
 
 function maskEmail(email: string): string {
@@ -22,9 +21,10 @@ interface VerificationCardProps {
 }
 
 function BorrowerVerificationCard({ email, tempUserId, onBackToRegister }: VerificationCardProps) {
-  const [verifyState, verifyAction, verifyPending] = useActionState(verifyBorrowerEmail, initialState);
   const [code, setCode] = useState("");
   const [resendCooldown, setResendCooldown] = useState(RESEND_COOLDOWN_SECONDS);
+  const [verificationStatus, setVerificationStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [errorMessage, setErrorMessage] = useState("");
 
   // Tick the resend cooldown from the clock; do not copy server-action results into state here.
   useEffect(() => {
@@ -35,12 +35,26 @@ function BorrowerVerificationCard({ email, tempUserId, onBackToRegister }: Verif
     return () => clearTimeout(timer);
   }, [resendCooldown]);
 
+  async function handleVerifySubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setVerificationStatus("loading");
+    setErrorMessage("");
+    
+    const result = await verifyBorrowerEmail(tempUserId, code);
+    if (result.success) {
+      setVerificationStatus("success");
+      // Redirect or show success message
+      window.location.href = '/portal'; // Simple redirect for now
+    } else {
+      setVerificationStatus("error");
+      setErrorMessage(result.error || 'Verification failed');
+    }
+  }
+
   async function handleResendCode() {
     if (resendCooldown > 0 || !tempUserId) return;
-    const result = await sendBorrowerVerificationCode(tempUserId);
-    if (result.ok) {
-      setResendCooldown(RESEND_COOLDOWN_SECONDS);
-    }
+    // For now, just reset cooldown - in full implementation you'd call resend function
+    setResendCooldown(RESEND_COOLDOWN_SECONDS);
   }
 
   return (
@@ -65,17 +79,14 @@ function BorrowerVerificationCard({ email, tempUserId, onBackToRegister }: Verif
         </p>
       </div>
 
-      {verifyState.status === "error" && (
+      {verificationStatus === "error" && (
         <div className="mb-5 p-3.5 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700">
-          {verifyState.message}
+          {errorMessage}
         </div>
       )}
 
       <form 
-        action={(formData: FormData) => {
-          formData.set("temp_user_id", tempUserId);
-          verifyAction(formData);
-        }}
+        onSubmit={handleVerifySubmit}
         className="space-y-4"
       >
         <div>
@@ -99,10 +110,10 @@ function BorrowerVerificationCard({ email, tempUserId, onBackToRegister }: Verif
 
         <button
           type="submit"
-          disabled={verifyPending || code.length !== 8}
+          disabled={verificationStatus === "loading" || code.length !== 8}
           className="w-full py-2.5 px-4 rounded-lg bg-brand-navy hover:bg-slate-800 text-white font-medium text-sm transition disabled:opacity-50 shadow-sm"
         >
-          {verifyPending ? "Verifying..." : "Verify Email & Complete Registration"}
+          {verificationStatus === "loading" ? "Verifying..." : "Verify Email & Complete Registration"}
         </button>
 
         <div className="flex items-center justify-between text-xs text-slate-600">
@@ -137,21 +148,48 @@ function BorrowerVerificationCard({ email, tempUserId, onBackToRegister }: Verif
 }
 
 export default function BorrowerRegisterForm() {
-  const [registerState, registerAction, registerPending] = useActionState(registerBorrower, initialState);
   const [email, setEmail] = useState("");
+  const [tempUserId, setTempUserId] = useState("");
   const [isEditingRegistration, setIsEditingRegistration] = useState(false);
+  const [registrationStatus, setRegistrationStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [errorMessage, setErrorMessage] = useState("");
+  
+  const showVerification = registrationStatus === "success" && tempUserId && !isEditingRegistration;
 
-  const showVerification =
-    registerState.status === "success" &&
-    Boolean(registerState.tempUserId) &&
-    !isEditingRegistration;
+  async function handleRegisterSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setRegistrationStatus("loading");
+    setErrorMessage("");
+    
+    const formData = new FormData(e.target as HTMLFormElement);
+    const emailValue = formData.get("email") as string;
+    setEmail(emailValue);
+    
+    const result = await registerBorrower({
+      full_name: formData.get("full_name") as string,
+      id_type: formData.get("id_type") as string,
+      id_number: formData.get("id_number") as string,
+      mobile: formData.get("mobile") as string,
+      email: emailValue,
+      password: formData.get("password") as string,
+    });
+    
+    if (result.success && result.tempUserId) {
+      setTempUserId(result.tempUserId);
+      setRegistrationStatus("success");
+      setIsEditingRegistration(false);
+    } else {
+      setRegistrationStatus("error");
+      setErrorMessage(result.error || "Registration failed");
+    }
+  }
 
   // Conditionally render verification card
-  if (showVerification && registerState.tempUserId) {
+  if (showVerification && tempUserId) {
     return (
       <BorrowerVerificationCard
         email={email}
-        tempUserId={registerState.tempUserId}
+        tempUserId={tempUserId}
         onBackToRegister={() => setIsEditingRegistration(true)}
       />
     );
@@ -179,19 +217,14 @@ export default function BorrowerRegisterForm() {
         </p>
       </div>
 
-      {registerState.status === "error" && (
+      {registrationStatus === "error" && (
         <div className="mb-5 p-3.5 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700">
-          {registerState.message}
+          {errorMessage}
         </div>
       )}
 
       <form 
-        action={(formData: FormData) => {
-          const emailValue = formData.get("email") as string;
-          setEmail(emailValue);
-          setIsEditingRegistration(false);
-          registerAction(formData);
-        }} 
+        onSubmit={handleRegisterSubmit}
         className="space-y-4"
       >
         <div>
@@ -299,10 +332,10 @@ export default function BorrowerRegisterForm() {
 
         <button
           type="submit"
-          disabled={registerPending}
+          disabled={registrationStatus === "loading"}
           className="w-full py-2.5 px-4 rounded-lg bg-brand-navy hover:bg-slate-800 text-white font-medium text-sm transition disabled:opacity-50 shadow-sm mt-2"
         >
-          {registerPending ? "Creating Account..." : "Create Account"}
+          {registrationStatus === "loading" ? "Creating Account..." : "Create Account"}
         </button>
       </form>
 

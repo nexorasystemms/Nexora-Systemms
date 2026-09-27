@@ -1,88 +1,214 @@
 import Link from "next/link";
 import { requireStaff } from "@/lib/current-staff";
 import { createClient } from "@/lib/supabase/server";
-import StatusBadge from "@/components/StatusBadge";
-import { formatNad, ageInDays } from "@/lib/format";
+import { formatNad, formatDate } from "@/lib/format";
+import type { RuleResult } from "@/lib/rules-engine/types";
+import type { ApplicationStatus } from "@/types/database";
 
-// FR-RPT-01: pipeline/operations view — every application by status, with age-in-status.
+const STAGES: { key: ApplicationStatus[]; label: string }[] = [
+  { key: ["draft"], label: "Draft" },
+  { key: ["submitted"], label: "Submitted" },
+  { key: ["under_review", "awaiting_documents"], label: "Review" },
+  { key: ["assessed"], label: "Assessed" },
+  { key: ["approved", "approved_with_changes"], label: "Approved" },
+  { key: ["agreement_generated", "agreement_accepted"], label: "Agreement" },
+  { key: ["disbursed", "performing", "in_arrears"], label: "Disbursed" },
+];
+
+function ruleStatusBadge(rulesPassed: RuleResult[] | null, rulesFailed: RuleResult[] | null) {
+  if (!rulesPassed && !rulesFailed) {
+    return { label: "Not Assessed", tone: "bg-surface-container text-on-surface-variant", icon: "hourglass_empty" };
+  }
+  const failed = rulesFailed ?? [];
+  const total = (rulesPassed?.length ?? 0) + failed.length;
+  const hasRegulatory = failed.some((r) => r.type === "Regulatory");
+  if (hasRegulatory) return { label: "Hard Blocked", tone: "bg-error-container text-on-error-container font-bold", icon: "block" };
+  if (failed.length > 0) return { label: "Policy Flagged", tone: "bg-secondary-container text-on-secondary-container", icon: "info" };
+  return { label: `Passed ${total}/${total}`, tone: "bg-tertiary-fixed/40 text-tertiary-container", icon: "check_circle" };
+}
+
 export default async function PipelinePage() {
   const staff = await requireStaff();
   const supabase = await createClient();
 
   const { data: applications } = await supabase
     .from("applications")
-    .select("id, reference_number, amount_requested, status, created_at, updated_at, applicants(full_name)")
+    .select("id, reference_number, amount_requested, term_months, product_type, next_pay_date, status, created_at, updated_at, applicants(full_name, id_type), users(full_name)")
     .order("updated_at", { ascending: false })
     .limit(100);
 
-  const openCount = applications?.filter((a) => !["settled", "declined", "withdrawn", "handed_over"].includes(a.status)).length ?? 0;
-  const inArrearsCount = applications?.filter((a) => a.status === "in_arrears").length ?? 0;
+  type LatestAssessment = {
+    application_id: string; computed_s: number | null; computed_dsr: number | null;
+    rules_passed: unknown; rules_failed: unknown; created_at: string;
+  };
+  const appIds = (applications ?? []).map((a) => a.id);
+  const { data: assessments } = appIds.length
+    ? await supabase
+        .from("assessments")
+        .select("application_id, computed_s, computed_dsr, rules_passed, rules_failed, created_at")
+        .in("application_id", appIds)
+        .order("created_at", { ascending: false })
+    : { data: [] as LatestAssessment[] };
+
+  const latestAssessmentByApp = new Map<string, LatestAssessment>();
+  for (const a of assessments ?? []) if (!latestAssessmentByApp.has(a.application_id)) latestAssessmentByApp.set(a.application_id, a);
+
+  const { data: loans } = await supabase.from("loans").select("disbursed_amount, status");
+  const { data: arrearsEvents } = await supabase.from("arrears_events").select("penalty_charged, status").eq("status", "open");
+
+  const activeApps = (applications ?? []).filter((a) => !["settled", "declined", "withdrawn", "handed_over"].includes(a.status));
+  const activeVolume = activeApps.reduce((s, a) => s + Number(a.amount_requested), 0);
+  const disbursedLoans = (loans ?? []).filter((l) => l.status !== "handed_over");
+  const disbursedVolume = disbursedLoans.reduce((s, l) => s + Number(l.disbursed_amount), 0);
+  const awaitingDecision = (applications ?? []).filter((a) => a.status === "assessed").length;
+  const arrearsAtRisk = (arrearsEvents ?? []).reduce((s, e) => s + Number(e.penalty_charged), 0);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-space-lg">
+      <div className="w-full bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-space-lg">
         <div>
-          <h1 className="text-xl font-semibold text-brand-navy">Application Pipeline</h1>
-          <p className="text-sm text-brand-muted">Welcome back, {staff.full_name.split(" ")[0]}.</p>
+          <span className="text-[11px] text-primary uppercase tracking-widest font-semibold">Nexora Cash Loan Module</span>
+          <h1 className="text-2xl font-bold text-on-surface tracking-tight">Welcome back, {staff.full_name.split(" ")[0]}</h1>
+          <p className="text-sm text-on-surface-variant">Live application pipeline — every record below is a real row in the database.</p>
         </div>
         <Link
-          href="/applications/new"
-          className="rounded-md bg-brand-navy text-white text-sm font-medium px-4 py-2 hover:bg-brand-navy-light transition"
+          href="/applicants"
+          className="flex items-center gap-1.5 px-space-md h-9 rounded bg-primary-container text-on-primary text-sm font-semibold hover:bg-primary transition-colors shadow-sm shrink-0"
         >
-          + New Application
+          <span className="material-symbols-outlined text-[16px]">add_circle</span>
+          <span>New Intake Dossier</span>
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <SummaryCard label="Open applications" value={String(openCount)} />
-        <SummaryCard label="In arrears" value={String(inArrearsCount)} tone={inArrearsCount > 0 ? "danger" : "default"} />
-        <SummaryCard label="Total (last 100)" value={String(applications?.length ?? 0)} />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-gutter-desktop">
+        <KpiCard label="Active Pipeline" icon="account_tree" value={String(activeApps.length)} unit="Applications" sub={`Requested vol: ${formatNad(activeVolume)}`} />
+        <KpiCard label="Awaiting Decision" icon="gavel" value={String(awaitingDecision)} unit="Assessed" sub="Ready for approver review" />
+        <KpiCard label="Disbursed" icon="payments" value={String(disbursedLoans.length)} unit="Loans Booked" sub={`Net capital: ${formatNad(disbursedVolume)}`} tone="tertiary" />
+        <KpiCard label="Arrears Watchlist" icon="warning" value={String(arrearsEvents?.length ?? 0)} unit="Open Cases" sub={`${formatNad(arrearsAtRisk)} penalty accrued`} tone="error" />
       </div>
 
-      <div className="bg-brand-surface border border-brand-border rounded-xl overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 text-brand-muted text-xs uppercase tracking-wide">
-            <tr>
-              <th className="text-left px-4 py-3">Reference</th>
-              <th className="text-left px-4 py-3">Applicant</th>
-              <th className="text-left px-4 py-3">Amount</th>
-              <th className="text-left px-4 py-3">Status</th>
-              <th className="text-left px-4 py-3">Age in status</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-brand-border">
-            {applications?.map((app) => (
-              <tr key={app.id} className="hover:bg-gray-50 transition">
-                <td className="px-4 py-3">
-                  <Link href={`/applications/${app.id}`} className="text-brand-blue font-medium hover:underline">
-                    {app.reference_number}
-                  </Link>
-                </td>
-                <td className="px-4 py-3">{(app.applicants as unknown as { full_name: string } | null)?.full_name ?? "—"}</td>
-                <td className="px-4 py-3">{formatNad(app.amount_requested)}</td>
-                <td className="px-4 py-3"><StatusBadge status={app.status} /></td>
-                <td className="px-4 py-3 text-brand-muted">{ageInDays(app.updated_at)}d</td>
+      <div className="w-full bg-surface-container-lowest rounded-xl p-space-lg shadow-sm space-y-space-md">
+        <h2 className="text-lg font-bold text-on-surface">Origination Lifecycle</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-space-sm">
+          {STAGES.map((stage) => {
+            const inStage = (applications ?? []).filter((a) => stage.key.includes(a.status));
+            const sum = inStage.reduce((s, a) => s + Number(a.amount_requested), 0);
+            return (
+              <div key={stage.label} className="bg-surface-container-low rounded-lg p-space-sm flex flex-col justify-between min-h-[88px] shadow-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] text-secondary uppercase font-semibold">{stage.label}</span>
+                  <span className="w-5 h-5 rounded-full bg-surface-container-highest text-primary font-mono text-[11px] flex items-center justify-center font-bold">
+                    {inStage.length}
+                  </span>
+                </div>
+                <div className="font-mono text-base text-on-surface font-bold">{formatNad(sum)}</div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
+        <div className="p-space-lg flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-on-surface">Queue Ledger</h2>
+            <p className="text-sm text-on-surface-variant">Live surplus and rule-engine status straight from the latest assessment on file.</p>
+          </div>
+          <span className="px-space-xs py-0.5 rounded bg-surface-container text-on-surface-variant font-mono text-[11px] font-semibold">
+            {applications?.length ?? 0} RECORDS
+          </span>
+        </div>
+        <div className="w-full overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-surface-container-low text-on-surface-variant text-[11px] uppercase tracking-wider h-9">
+                <th className="px-space-md py-1 font-semibold">App Ref &amp; Borrower</th>
+                <th className="px-space-md py-1 text-right font-semibold">Requested</th>
+                <th className="px-space-md py-1 font-semibold">Next Pay Date</th>
+                <th className="px-space-md py-1 text-right font-semibold">Surplus (S)</th>
+                <th className="px-space-md py-1 text-center font-semibold">DSR</th>
+                <th className="px-space-md py-1 font-semibold">Rule Engine</th>
+                <th className="px-space-md py-1 font-semibold">Created By</th>
+                <th className="px-space-md py-1 text-right font-semibold">Action</th>
               </tr>
-            ))}
-            {!applications?.length && (
-              <tr>
-                <td colSpan={5} className="px-4 py-10 text-center text-brand-muted">
-                  No applications yet. Create the first one to get started.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-surface-container-low text-sm text-on-surface">
+              {applications?.map((app) => {
+                const assessment = latestAssessmentByApp.get(app.id);
+                const rules = ruleStatusBadge(
+                  (assessment?.rules_passed as RuleResult[] | null) ?? null,
+                  (assessment?.rules_failed as RuleResult[] | null) ?? null,
+                );
+                const applicant = app.applicants as unknown as { full_name: string } | null;
+                const createdBy = app.users as unknown as { full_name: string } | null;
+                const surplus = assessment ? Number(assessment.computed_s) : null;
+                return (
+                  <tr key={app.id} className="hover:bg-surface-container-low transition-colors h-12">
+                    <td className="px-space-md py-2">
+                      <div className="font-mono text-[13px] text-primary font-bold">{app.reference_number}</div>
+                      <div className="text-sm text-on-surface">{applicant?.full_name ?? "—"}</div>
+                    </td>
+                    <td className="px-space-md py-2 text-right font-mono font-semibold">{formatNad(app.amount_requested)}</td>
+                    <td className="px-space-md py-2 font-mono text-[12px] text-secondary">{app.next_pay_date ? formatDate(app.next_pay_date) : "—"}</td>
+                    <td className="px-space-md py-2 text-right font-mono font-semibold">
+                      {surplus == null ? <span className="text-on-surface-variant">—</span> : (
+                        <span className={surplus > 0 ? "text-tertiary-container" : "text-error"}>{surplus > 0 ? "+" : ""}{formatNad(surplus)}</span>
+                      )}
+                    </td>
+                    <td className="px-space-md py-2 text-center font-mono text-[12px]">
+                      {assessment ? `${(Number(assessment.computed_dsr) * 100).toFixed(1)}%` : "—"}
+                    </td>
+                    <td className="px-space-md py-2">
+                      <span className={`inline-flex items-center gap-1 px-space-sm py-0.5 rounded text-[11px] font-semibold ${rules.tone}`}>
+                        <span className="material-symbols-outlined text-[12px]">{rules.icon}</span>
+                        {rules.label}
+                      </span>
+                    </td>
+                    <td className="px-space-md py-2 text-[12px] text-on-surface-variant">{createdBy?.full_name ?? "—"}</td>
+                    <td className="px-space-md py-2 text-right">
+                      <Link
+                        href={`/applications/${app.id}`}
+                        className="px-space-sm py-1 rounded bg-primary-container text-on-primary text-[12px] font-medium hover:bg-primary shadow-sm"
+                      >
+                        Open File
+                      </Link>
+                    </td>
+                  </tr>
+                );
+              })}
+              {!applications?.length && (
+                <tr>
+                  <td colSpan={8} className="px-space-md py-10 text-center text-on-surface-variant">
+                    No applications yet. Create the first one from &ldquo;New Intake Dossier&rdquo; above.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
 }
 
-function SummaryCard({ label, value, tone = "default" }: { label: string; value: string; tone?: "default" | "danger" }) {
+function KpiCard({
+  label, icon, value, unit, sub, tone = "primary",
+}: { label: string; icon: string; value: string; unit: string; sub: string; tone?: "primary" | "tertiary" | "error" }) {
+  const valueColor = tone === "tertiary" ? "text-tertiary-container" : tone === "error" ? "text-error" : "text-on-surface";
+  const iconColor = tone === "tertiary" ? "text-tertiary-container" : tone === "error" ? "text-error" : "text-primary";
   return (
-    <div className="bg-brand-surface border border-brand-border rounded-xl p-4">
-      <div className="text-xs text-brand-muted uppercase tracking-wide mb-1">{label}</div>
-      <div className={`text-2xl font-semibold ${tone === "danger" ? "text-danger" : "text-brand-navy"}`}>{value}</div>
+    <div className="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col justify-between">
+      <div className="flex items-center justify-between mb-space-sm">
+        <span className="text-[11px] uppercase text-on-surface-variant tracking-wider font-semibold">{label}</span>
+        <span className={`material-symbols-outlined text-[20px] ${iconColor}`}>{icon}</span>
+      </div>
+      <div>
+        <div className="flex items-baseline gap-2">
+          <span className={`text-3xl font-mono font-bold ${valueColor}`}>{value}</span>
+          <span className="text-[11px] text-on-surface-variant uppercase">{unit}</span>
+        </div>
+        <div className="mt-space-xs text-[12px] font-mono text-on-surface-variant">{sub}</div>
+      </div>
     </div>
   );
 }

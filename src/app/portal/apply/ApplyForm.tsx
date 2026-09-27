@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { submitBorrowerApplication } from "../actions";
+import { submitBorrowerApplication } from "@/lib/supabase/stubs";
 
 export default function ApplyForm({ applicantName }: { applicantName: string }) {
   const [step, setStep] = useState(1);

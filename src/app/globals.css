@@ -4,7 +4,7 @@
   --background: #f6f7fb;
   --foreground: #171a2b;
 
-  /* Nexora Systems brand */
+  /* Legacy Nexora brand tokens — still referenced by a few not-yet-restyled components. */
   --brand-navy: #241c5b;
   --brand-navy-light: #372f7a;
   --brand-blue: #2fa9e0;
@@ -17,6 +17,140 @@
   --danger: #d64545;
   --warning: #e0a940;
   --success: #2f9e5b;
+}
+
+/* =========================================================================
+   Two Material-3-style design systems, ported from the Stitch mockups:
+   "admin" (deep blue, Inter) for the staff console, "portal" (indigo/teal,
+   Hanken Grotesk headlines) for the borrower self-service portal. Both
+   define the SAME semantic variable names (surface-container-lowest,
+   on-surface-variant, etc.) with different values — wrap a subtree in
+   data-surface="admin" or data-surface="portal" to pick one; @theme inline
+   below makes every utility (bg-*, text-*, border-*) resolve through the
+   custom property at paint time, not at build time, so the same className
+   strings produce the right look in either scope.
+   ========================================================================= */
+
+[data-surface="admin"] {
+  --s-primary: #00288e;
+  --s-on-primary: #ffffff;
+  --s-primary-container: #1e40af;
+  --s-on-primary-container: #a8b8ff;
+  --s-primary-fixed: #dde1ff;
+  --s-primary-fixed-dim: #b8c4ff;
+  --s-on-primary-fixed: #001453;
+  --s-on-primary-fixed-variant: #173bab;
+
+  --s-secondary: #565e74;
+  --s-on-secondary: #ffffff;
+  --s-secondary-container: #dae2fd;
+  --s-on-secondary-container: #5c647a;
+  --s-secondary-fixed: #dae2fd;
+  --s-secondary-fixed-dim: #bec6e0;
+  --s-on-secondary-fixed: #131b2e;
+  --s-on-secondary-fixed-variant: #3f465c;
+
+  --s-tertiary: #003d28;
+  --s-on-tertiary: #ffffff;
+  --s-tertiary-container: #00563a;
+  --s-on-tertiary-container: #5bcf9e;
+  --s-tertiary-fixed: #85f8c4;
+  --s-tertiary-fixed-dim: #68dba9;
+  --s-on-tertiary-fixed: #002114;
+  --s-on-tertiary-fixed-variant: #005137;
+
+  --s-error: #ba1a1a;
+  --s-on-error: #ffffff;
+  --s-error-container: #ffdad6;
+  --s-on-error-container: #93000a;
+
+  --s-background: #f8f9ff;
+  --s-on-background: #0b1c30;
+  --s-surface: #f8f9ff;
+  --s-on-surface: #0b1c30;
+  --s-surface-variant: #d3e4fe;
+  --s-on-surface-variant: #444653;
+  --s-outline: #757684;
+  --s-outline-variant: #c4c5d5;
+
+  --s-surface-bright: #f8f9ff;
+  --s-surface-dim: #cbdbf5;
+  --s-surface-container-lowest: #ffffff;
+  --s-surface-container-low: #eff4ff;
+  --s-surface-container: #e5eeff;
+  --s-surface-container-high: #dce9ff;
+  --s-surface-container-highest: #d3e4fe;
+  --s-inverse-surface: #213145;
+  --s-inverse-on-surface: #eaf1ff;
+  --s-inverse-primary: #b8c4ff;
+
+  --s-radius-sm: 0.125rem;
+  --s-radius-lg: 0.25rem;
+  --s-radius-xl: 0.5rem;
+  --s-radius-full: 0.75rem;
+
+  --s-headline-font: var(--font-inter);
+}
+
+[data-surface="portal"] {
+  --s-primary: #0e0247;
+  --s-on-primary: #ffffff;
+  --s-primary-container: #241c5b;
+  --s-on-primary-container: #8d85ca;
+  --s-primary-fixed: #e4dfff;
+  --s-primary-fixed-dim: #c7bfff;
+  --s-on-primary-fixed: #190f50;
+  --s-on-primary-fixed-variant: #453e7e;
+
+  --s-secondary: #00658b;
+  --s-on-secondary: #ffffff;
+  --s-secondary-container: #58c6ff;
+  --s-on-secondary-container: #005170;
+  --s-secondary-fixed: #c4e7ff;
+  --s-secondary-fixed-dim: #7ed0ff;
+  --s-on-secondary-fixed: #001e2d;
+  --s-on-secondary-fixed-variant: #004c6a;
+
+  --s-tertiary: #001513;
+  --s-on-tertiary: #ffffff;
+  --s-tertiary-container: #002c28;
+  --s-on-tertiary-container: #439b92;
+  --s-tertiary-fixed: #9cf2e8;
+  --s-tertiary-fixed-dim: #80d5cb;
+  --s-on-tertiary-fixed: #00201d;
+  --s-on-tertiary-fixed-variant: #00504a;
+
+  --s-error: #ba1a1a;
+  --s-on-error: #ffffff;
+  --s-error-container: #ffdad6;
+  --s-on-error-container: #93000a;
+
+  --s-background: #faf8ff;
+  --s-on-background: #151a2f;
+  --s-surface: #faf8ff;
+  --s-on-surface: #151a2f;
+  --s-surface-variant: #dde1fe;
+  --s-on-surface-variant: #474550;
+  --s-outline: #787581;
+  --s-outline-variant: #c9c5d1;
+
+  --s-surface-bright: #faf8ff;
+  --s-surface-dim: #d4d9f5;
+  --s-surface-container-lowest: #ffffff;
+  --s-surface-container-low: #f3f2ff;
+  --s-surface-container: #ebedff;
+  --s-surface-container-high: #e4e7ff;
+  --s-surface-container-highest: #dde1fe;
+  --s-inverse-surface: #2a2f45;
+  --s-inverse-on-surface: #efefff;
+  --s-inverse-primary: #c7bfff;
+
+  --s-radius-sm: 0.25rem;
+  --s-radius-lg: 0.5rem;
+  --s-radius-xl: 0.75rem;
+  --s-radius-full: 9999px;
+
+  --s-headline-font: var(--font-hanken-grotesk);
 }
 
 @theme inline {
@@ -34,12 +168,87 @@
   --color-warning: var(--warning);
   --color-success: var(--success);
   --font-sans: var(--font-inter);
+  --font-mono: var(--font-jetbrains-mono);
+
+  /* Shared semantic names — resolve differently under data-surface="admin" vs "portal". */
+  --color-primary: var(--s-primary);
+  --color-on-primary: var(--s-on-primary);
+  --color-primary-container: var(--s-primary-container);
+  --color-on-primary-container: var(--s-on-primary-container);
+  --color-primary-fixed: var(--s-primary-fixed);
+  --color-primary-fixed-dim: var(--s-primary-fixed-dim);
+  --color-on-primary-fixed: var(--s-on-primary-fixed);
+  --color-on-primary-fixed-variant: var(--s-on-primary-fixed-variant);
+
+  --color-secondary: var(--s-secondary);
+  --color-on-secondary: var(--s-on-secondary);
+  --color-secondary-container: var(--s-secondary-container);
+  --color-on-secondary-container: var(--s-on-secondary-container);
+  --color-secondary-fixed: var(--s-secondary-fixed);
+  --color-secondary-fixed-dim: var(--s-secondary-fixed-dim);
+  --color-on-secondary-fixed: var(--s-on-secondary-fixed);
+  --color-on-secondary-fixed-variant: var(--s-on-secondary-fixed-variant);
+
+  --color-tertiary: var(--s-tertiary);
+  --color-on-tertiary: var(--s-on-tertiary);
+  --color-tertiary-container: var(--s-tertiary-container);
+  --color-on-tertiary-container: var(--s-on-tertiary-container);
+  --color-tertiary-fixed: var(--s-tertiary-fixed);
+  --color-tertiary-fixed-dim: var(--s-tertiary-fixed-dim);
+  --color-on-tertiary-fixed: var(--s-on-tertiary-fixed);
+  --color-on-tertiary-fixed-variant: var(--s-on-tertiary-fixed-variant);
+
+  --color-error: var(--s-error);
+  --color-on-error: var(--s-on-error);
+  --color-error-container: var(--s-error-container);
+  --color-on-error-container: var(--s-on-error-container);
+
+  --color-surface: var(--s-surface);
+  --color-on-surface: var(--s-on-surface);
+  --color-surface-variant: var(--s-surface-variant);
+  --color-on-surface-variant: var(--s-on-surface-variant);
+  --color-outline: var(--s-outline);
+  --color-outline-variant: var(--s-outline-variant);
+
+  --color-surface-bright: var(--s-surface-bright);
+  --color-surface-dim: var(--s-surface-dim);
+  --color-surface-container-lowest: var(--s-surface-container-lowest);
+  --color-surface-container-low: var(--s-surface-container-low);
+  --color-surface-container: var(--s-surface-container);
+  --color-surface-container-high: var(--s-surface-container-high);
+  --color-surface-container-highest: var(--s-surface-container-highest);
+  --color-inverse-surface: var(--s-inverse-surface);
+  --color-inverse-on-surface: var(--s-inverse-on-surface);
+  --color-inverse-primary: var(--s-inverse-primary);
+
+  --radius-sm: var(--s-radius-sm);
+  --radius-lg: var(--s-radius-lg);
+  --radius-xl: var(--s-radius-xl);
+  --radius-full: var(--s-radius-full);
+
+  --font-headline: var(--s-headline-font);
+
+  /* Shared spacing scale (same values in both surfaces, named to match the mockups). */
+  --spacing-space-xs: 0.25rem;
+  --spacing-space-sm: 0.5rem;
+  --spacing-space-md: 0.75rem;
+  --spacing-space-lg: 1.25rem;
+  --spacing-space-xl: 2rem;
+  --spacing-gutter: 1rem;
+  --spacing-gutter-desktop: 1.5rem;
+  --spacing-margin: 1rem;
+  --spacing-margin-desktop: 2rem;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+}
+
+[data-surface] {
+  background: var(--s-background);
+  color: var(--s-on-surface);
 }
 
 ::selection {

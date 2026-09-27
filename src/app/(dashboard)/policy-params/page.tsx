@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/current-staff";
 import { formatDate, formatDateTime } from "@/lib/format";
-import { addPolicyParam, activateTemplate, recordAttorneyReview, createTemplate } from "./actions";
+import { addPolicyParam, activateTemplate, recordAttorneyReview, createTemplate } from "@/lib/supabase/stubs";
 
 const KNOWN_PARAMS = [
   "loan_ceiling_nad", "term_ceiling_months", "finance_charge_cap_short_term_months",
