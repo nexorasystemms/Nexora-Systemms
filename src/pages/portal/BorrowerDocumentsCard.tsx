@@ -17,7 +17,7 @@ const STATUS_STYLE: Record<string, { bg: string; label: string }> = {
 };
 
 export default function BorrowerDocumentsCard({
-  applicationId,
+  applicationId: _applicationId,
   documents,
   canUpload = true,
 }: {
@@ -46,7 +46,7 @@ export default function BorrowerDocumentsCard({
 
     startTransition(async () => {
       try {
-        await borrowerUploadDocument(applicationId, formData);
+        await borrowerUploadDocument(formData);
         setSuccess(true);
         setFile(null);
       } catch (err) {

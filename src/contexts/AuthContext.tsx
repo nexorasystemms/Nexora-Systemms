@@ -37,7 +37,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
         loadUserProfile(session.user)
       } else {
@@ -60,17 +60,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (profile) {
         setUser({
           ...authUser,
-          role: profile.role,
-          full_name: profile.full_name,
-          tenant_id: profile.tenant_id,
-          applicant_id: profile.applicant_id
+          role: profile.role as StaffRole | undefined,
+          full_name: profile.full_name ?? undefined,
+          tenant_id: profile.tenant_id ?? undefined,
+          applicant_id: profile.applicant_id ?? undefined
         })
       } else {
-        setUser(authUser)
+        setUser(authUser as AuthUser)
       }
     } catch (error) {
       console.error('Error loading user profile:', error)
-      setUser(authUser)
+      setUser(authUser as AuthUser)
     } finally {
       setLoading(false)
     }

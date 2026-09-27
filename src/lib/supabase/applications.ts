@@ -371,7 +371,7 @@ export async function uploadDocument(
     const filePath = `applications/${applicationId}/${documentType}_${timestamp}.${file.name.split('.').pop()}`
     
     // Upload file to Supabase Storage
-    const { data: uploadData, error: uploadError } = await supabase.storage
+    const { error: uploadError } = await supabase.storage
       .from('documents')
       .upload(filePath, file)
 

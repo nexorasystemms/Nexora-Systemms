@@ -14,7 +14,7 @@ interface EmailOptions {
 
 export async function sendEmail(options: EmailOptions): Promise<{ success: boolean; error?: string }> {
   try {
-    const { data, error } = await supabase.functions.invoke('send-email', {
+    const { error } = await supabase.functions.invoke('send-email', {
       body: options
     })
 

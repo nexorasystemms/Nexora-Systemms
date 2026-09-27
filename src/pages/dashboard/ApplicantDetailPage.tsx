@@ -39,7 +39,7 @@ export default function ApplicantDetailPage() {
         const { data: applicantData } = await supabase
           .from("applicants")
           .select("*")
-          .eq("id", applicantId)
+          .eq("id", applicantId!)
           .single();
 
         if (!applicantData) {
@@ -52,7 +52,7 @@ export default function ApplicantDetailPage() {
         const { data: applicationsData } = await supabase
           .from("applications")
           .select("id, reference_number, amount_requested, status, created_at")
-          .eq("applicant_id", applicantId)
+          .eq("applicant_id", applicantId!)
           .order("created_at", { ascending: false });
 
         setApplications(applicationsData || []);

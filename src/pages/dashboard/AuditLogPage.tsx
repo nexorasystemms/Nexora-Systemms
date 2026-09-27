@@ -1,10 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { createClient } from "../../lib/supabase/client";
-import { formatDate } from "../../lib/format";
 
 export default function AuditLogPage() {
-  const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
@@ -31,8 +29,8 @@ export default function AuditLogPage() {
           return;
         }
 
-        // Mock audit log data - replace with actual implementation
-        setAuditLogs([]);
+        // Audit log - pending implementation
+        setLoading(false);
 
       } catch (error) {
         console.error('Error loading audit log:', error);
