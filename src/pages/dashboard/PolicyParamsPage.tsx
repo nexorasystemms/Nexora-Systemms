@@ -1,67 +1,19 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { createClient } from "../../lib/supabase/client";
+import { useDashboardAuth } from "../../lib/useDashboardAuth";
+import DashboardPageShell, { PageLoader, ComingSoonCard } from "../../components/DashboardPageShell";
 
 export default function PolicyParamsPage() {
-  const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    async function loadData() {
-      try {
-        const supabase = createClient();
-        
-        // Check authentication
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-          navigate('/login');
-          return;
-        }
-
-        const { data: userData } = await supabase
-          .from('users')
-          .select('role')
-          .eq('id', session.user.id)
-          .single();
-
-        if (!userData || userData.role === 'borrower') {
-          navigate('/login');
-          return;
-        }
-
-      } catch (error) {
-        console.error('Error loading policy params:', error);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadData();
-  }, [navigate]);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-on-surface-variant">Loading policy parameters...</p>
-        </div>
-      </div>
-    );
-  }
+  const { user, loading } = useDashboardAuth(["admin", "super_admin"]);
+  if (loading) return <PageLoader label="Loading policy parameters…" />;
+  if (!user) return null;
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold text-brand-navy">Policy Parameters</h1>
-        <p className="text-sm text-brand-muted">Configure lending policy rules and parameters.</p>
-      </div>
-
-      <div className="bg-brand-surface border border-brand-border rounded-xl overflow-hidden">
-        <div className="p-8 text-center text-brand-muted">
-          <p>Policy parameters configuration implementation pending</p>
-        </div>
-      </div>
-    </div>
+    <DashboardPageShell
+      title="Policy Parameters"
+      subtitle="Configure lending policy rules, rate caps, DSR thresholds, and pilot volume limits."
+      icon="tune"
+      badge="Admin Only"
+    >
+      <ComingSoonCard feature="Policy parameter configuration" />
+    </DashboardPageShell>
   );
 }

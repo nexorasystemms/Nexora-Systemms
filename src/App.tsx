@@ -21,6 +21,7 @@ import BorrowerLoginPage from './pages/portal/BorrowerLoginPage'
 import BorrowerRegisterPage from './pages/portal/BorrowerRegisterPage'
 import BorrowerApplyPage from './pages/portal/BorrowerApplyPage'
 import LandingPage from './pages/landing/LandingPage'
+import NexoraHomePage from './pages/nexora/NexoraHomePage'
 
 function App() {
   return (
@@ -57,7 +58,13 @@ function App() {
           <Route path="pilot-guardrails" element={<PilotGuardrailsPage />} />
         </Route>
         
-        <Route path="/" element={<LandingPage />} />
+        {/* TMU Investments Tenant routes */}
+        <Route path="/tmu" element={<LandingPage />} />
+        <Route path="/tmu-investments" element={<LandingPage />} />
+        <Route path="/tmu-cashloan" element={<LandingPage />} />
+
+        {/* Nexora Systems Flagship Homepage */}
+        <Route path="/" element={<NexoraHomePage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AuthProvider>

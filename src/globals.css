@@ -274,3 +274,312 @@ body {
 .landing-range {
   accent-color: #241c5b;
 }
+
+/* Typography Scale from Sovereign Ledger OS */
+.font-headline-xl {
+  font-family: var(--font-inter);
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 38px;
+  letter-spacing: -0.025em;
+}
+.font-headline-lg {
+  font-family: var(--font-inter);
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 28px;
+  letter-spacing: -0.02em;
+}
+.font-headline-md {
+  font-family: var(--font-inter);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 24px;
+  letter-spacing: -0.015em;
+}
+.font-body-lg {
+  font-family: var(--font-inter);
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 22px;
+}
+.font-body-md {
+  font-family: var(--font-inter);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 18px;
+}
+.font-body-sm {
+  font-family: var(--font-inter);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+}
+.font-label-lg {
+  font-family: var(--font-inter);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 16px;
+  letter-spacing: 0.01em;
+}
+.font-label-md {
+  font-family: var(--font-inter);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 14px;
+  letter-spacing: 0.03em;
+}
+.font-label-sm {
+  font-family: var(--font-jetbrains-mono);
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 12px;
+  letter-spacing: 0.05em;
+}
+.font-code-financial {
+  font-family: var(--font-jetbrains-mono);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 18px;
+  letter-spacing: -0.02em;
+  font-feature-settings: "tnum" 1, "cv05" 1;
+}
+
+/* =========================================================================
+   Homepage animations & effects
+   ========================================================================= */
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(32px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes slide-in-left {
+  from { opacity: 0; transform: translateX(-32px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-12px); }
+}
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(0, 40, 142, 0.15), 0 0 60px rgba(0, 40, 142, 0.05); }
+  50%       { box-shadow: 0 0 40px rgba(0, 40, 142, 0.30), 0 0 80px rgba(0, 40, 142, 0.12); }
+}
+@keyframes border-flow {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+@keyframes ticker {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+@keyframes dot-bounce {
+  0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+  40%            { transform: translateY(-6px); opacity: 1; }
+}
+@keyframes orbit {
+  from { transform: rotate(0deg) translateX(60px) rotate(0deg); }
+  to   { transform: rotate(360deg) translateX(60px) rotate(-360deg); }
+}
+@keyframes gradient-shift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Utility animation classes */
+.animate-fade-up        { animation: fade-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-fade-in        { animation: fade-in 0.5s ease both; }
+.animate-slide-right    { animation: slide-in-right 0.6s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-slide-left     { animation: slide-in-left  0.6s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-scale-in       { animation: scale-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-float          { animation: float 4s ease-in-out infinite; }
+.animate-glow-pulse     { animation: glow-pulse 3s ease-in-out infinite; }
+.animate-gradient       { background-size: 200% 200%; animation: gradient-shift 4s ease infinite; }
+.animate-ticker         { animation: ticker 28s linear infinite; }
+
+/* Staggered delay helpers */
+.delay-100  { animation-delay: 100ms; }
+.delay-200  { animation-delay: 200ms; }
+.delay-300  { animation-delay: 300ms; }
+.delay-400  { animation-delay: 400ms; }
+.delay-500  { animation-delay: 500ms; }
+.delay-600  { animation-delay: 600ms; }
+.delay-700  { animation-delay: 700ms; }
+.delay-800  { animation-delay: 800ms; }
+
+/* Shimmer text gradient */
+.text-shimmer {
+  background: linear-gradient(
+    90deg,
+    #00288e 0%, #1e40af 30%, #85f8c4 50%, #1e40af 70%, #00288e 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 3.5s linear infinite;
+}
+
+/* Glassmorphism nav utility */
+.glass-nav {
+  background: rgba(248, 249, 255, 0.85);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border-bottom: 1px solid rgba(196, 197, 213, 0.4);
+}
+
+/* Gradient border card */
+.gradient-border {
+  position: relative;
+  border-radius: 1rem;
+}
+.gradient-border::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, #00288e, #1e40af, #85f8c4, #1e40af, #00288e);
+  background-size: 300% 300%;
+  animation: border-flow 5s ease infinite;
+  z-index: -1;
+}
+
+/* Hero mesh gradient */
+.hero-mesh {
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 10%, rgba(0, 40, 142, 0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 80% 80%, rgba(133, 248, 196, 0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 40% at 50% 40%, rgba(30, 64, 175, 0.05) 0%, transparent 60%);
+}
+
+/* Dot pattern overlay */
+.dot-pattern {
+  background-image: radial-gradient(circle, rgba(0, 40, 142, 0.08) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* Agent card hover lift */
+.agent-card {
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.agent-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 40px rgba(0, 40, 142, 0.12), 0 4px 12px rgba(0, 40, 142, 0.06);
+}
+
+/* Metric counter style */
+.metric-value {
+  font-family: var(--font-jetbrains-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.04em;
+}
+
+/* Nav link underline animation */
+.nav-link-animated {
+  position: relative;
+}
+.nav-link-animated::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: var(--s-primary);
+  border-radius: 1px;
+  transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.nav-link-animated:hover::after { width: 100%; }
+
+/* Scroll reveal — JS adds .visible class for smooth entrance transitions */
+.reveal {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* =========================================================================
+   Responsive safety net
+   ========================================================================= */
+
+/* Prevent any overflowing element from creating a horizontal scrollbar
+   at the document level. Overflow on individual sections is still fine. */
+html, body {
+  overflow-x: hidden;
+  /* Improve text rendering on mobile */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* Ensure every image and video is fluid by default */
+img, video {
+  max-width: 100%;
+  height: auto;
+}
+
+/* =========================================================================
+   Accessibility: respect reduced-motion preference
+   ========================================================================= */
+@media (prefers-reduced-motion: reduce) {
+  /* Keyframe animations */
+  .animate-fade-up,
+  .animate-fade-in,
+  .animate-slide-right,
+  .animate-slide-left,
+  .animate-scale-in,
+  .animate-float,
+  .animate-glow-pulse,
+  .animate-gradient,
+  .animate-ticker,
+  .text-shimmer {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  /* Tailwind built-in animate-* utilities */
+  .animate-spin,
+  .animate-ping,
+  .animate-pulse,
+  .animate-bounce {
+    animation: none !important;
+  }
+
+  /* Scroll-reveal system */
+  .reveal {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+
+  /* CSS custom transitions */
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}

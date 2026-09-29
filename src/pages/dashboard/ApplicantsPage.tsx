@@ -61,17 +61,37 @@ export default function ApplicantsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <h1 className="text-xl font-semibold text-brand-navy">Applicants</h1>
         <Link
           to="/dashboard/applicants/new"
-          className="rounded-md bg-brand-navy text-white text-sm font-medium px-4 py-2 hover:bg-brand-navy-light transition"
+          className="shrink-0 rounded-md bg-brand-navy text-white text-sm font-medium px-4 py-2 hover:bg-brand-navy-light transition"
         >
           + New Applicant
         </Link>
       </div>
 
-      <div className="bg-brand-surface border border-brand-border rounded-xl overflow-hidden">
+      {/* ── Mobile card list (< md) ── */}
+      <div className="md:hidden bg-brand-surface border border-brand-border rounded-xl divide-y divide-brand-border overflow-hidden">
+        {applicants.map((a) => (
+          <div key={a.id} className="p-4 space-y-1">
+            <Link to={`/dashboard/applicants/${a.id}`} className="text-brand-blue font-semibold hover:underline block">
+              {a.full_name}
+            </Link>
+            <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-brand-muted">
+              <span>{a.mobile}</span>
+              <span className="capitalize">{a.marital_status.replaceAll("_", " ")}</span>
+              <span>{a.dependants_count} dependant{a.dependants_count !== 1 ? "s" : ""}</span>
+            </div>
+          </div>
+        ))}
+        {!applicants.length && (
+          <div className="px-4 py-10 text-center text-brand-muted text-sm">No applicants yet.</div>
+        )}
+      </div>
+
+      {/* ── Desktop table (≥ md) ── */}
+      <div className="hidden md:block bg-brand-surface border border-brand-border rounded-xl overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-brand-muted text-xs uppercase tracking-wide">
             <tr>

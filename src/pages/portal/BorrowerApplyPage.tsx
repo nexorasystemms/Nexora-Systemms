@@ -104,11 +104,12 @@ export default function BorrowerApplyPage() {
 
         <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden">
           {/* Step Header */}
-          <div className="p-6 bg-slate-50 border-b border-slate-200">
-            <div className="flex items-center justify-between mb-3">
+          <div className="p-4 sm:p-6 bg-slate-50 border-b border-slate-200">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
               <span className="text-xs font-bold uppercase tracking-wider text-teal-800">
                 Step {step} of 4: {stepLabel}
               </span>
+              <span className="text-[11px] text-slate-400 font-mono">{Math.round((step / 4) * 100)}% complete</span>
             </div>
             <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
               <div
@@ -303,17 +304,30 @@ export default function BorrowerApplyPage() {
             )}
 
             {/* Navigation */}
-            <div className="mt-8 pt-6 border-t border-slate-100 flex items-center justify-between">
+            <div className="mt-8 pt-6 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
               {step > 1 ? (
-                <button type="button" onClick={() => setStep((s) => s - 1)} className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 text-xs font-semibold hover:bg-slate-50 transition">← Back</button>
+                <button type="button" onClick={() => setStep((s) => s - 1)}
+                  className="px-4 py-2.5 rounded-lg border border-slate-300 text-slate-700 text-xs font-semibold
+                             hover:bg-slate-50 transition min-h-[44px]">
+                  ← Back
+                </button>
               ) : (
-                <Link to="/portal" className="text-xs text-slate-500 hover:text-slate-700 font-medium">Cancel</Link>
+                <Link to="/portal"
+                  className="text-xs text-slate-500 hover:text-slate-700 font-medium py-2.5 min-h-[44px] flex items-center">
+                  Cancel
+                </Link>
               )}
               {step < 4 ? (
-                <button type="button" onClick={handleNext} className="px-5 py-2.5 rounded-lg bg-teal-700 hover:bg-teal-800 text-white text-xs font-semibold shadow-xs transition">Continue to Step {step + 1} →</button>
+                <button type="button" onClick={handleNext}
+                  className="flex-1 sm:flex-none px-5 py-2.5 rounded-lg bg-teal-700 hover:bg-teal-800 text-white
+                             text-xs font-semibold shadow-sm transition min-h-[44px]">
+                  Continue to Step {step + 1} →
+                </button>
               ) : (
-                <button type="button" onClick={handleSubmit} disabled={pending} className="px-6 py-2.5 rounded-lg bg-brand-navy hover:bg-slate-800 text-white text-xs font-bold shadow-xs transition disabled:opacity-50">
-                  {pending ? "Submitting Application..." : "Submit Application to TMU"}
+                <button type="button" onClick={handleSubmit} disabled={pending}
+                  className="flex-1 sm:flex-none px-5 py-2.5 rounded-lg bg-indigo-900 hover:bg-indigo-800 text-white
+                             text-xs font-bold shadow-sm transition disabled:opacity-50 min-h-[44px]">
+                  {pending ? "Submitting…" : "Submit Application to TMU"}
                 </button>
               )}
             </div>

@@ -67,7 +67,36 @@ export default function ArrearsPage() {
         <p className="text-sm text-brand-muted">FR-REPAY-03/04 — the 90-day penalty-cap clock is tracked automatically, not by hand.</p>
       </div>
 
-      <div className="bg-brand-surface border border-brand-border rounded-xl overflow-hidden">
+      {/* ── Mobile card list (< md) ── */}
+      <div className="md:hidden bg-brand-surface border border-brand-border rounded-xl divide-y divide-brand-border overflow-hidden">
+        {events.map((e) => {
+          type LoanJoin = { id: string; application_id: string; applications: { reference_number: string; applicants: { full_name: string } } };
+          const loan = e.loans as unknown as LoanJoin;
+          return (
+            <div key={e.id} className={`p-4 space-y-1 ${e.hand_over_required ? "bg-red-50" : ""}`}>
+              <Link to={`/dashboard/applications/${loan.application_id}`} className="text-brand-blue font-semibold hover:underline block">
+                {loan.applications.reference_number}
+              </Link>
+              <div className="text-sm text-brand-muted">{loan.applications.applicants.full_name}</div>
+              <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-brand-muted">
+                <span className="font-medium">{e.days_past_due}d past due</span>
+                <span>{formatNad(e.penalty_charged)} penalty</span>
+                {e.hand_over_required ? (
+                  <span className="text-danger font-medium">Hand-over required</span>
+                ) : (
+                  <span className="capitalize">{e.status}</span>
+                )}
+              </div>
+            </div>
+          );
+        })}
+        {!events?.length && (
+          <div className="px-4 py-10 text-center text-brand-muted text-sm">No loans currently in arrears.</div>
+        )}
+      </div>
+
+      {/* ── Desktop table (≥ md) ── */}
+      <div className="hidden md:block bg-brand-surface border border-brand-border rounded-xl overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-brand-muted text-xs uppercase tracking-wide">
             <tr>

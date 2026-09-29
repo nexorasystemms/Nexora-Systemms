@@ -149,11 +149,44 @@ export default function UsersPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-xl font-semibold text-brand-navy">Staff & Roles</h1>
+        <h1 className="text-xl font-semibold text-brand-navy">Staff &amp; Roles</h1>
         <p className="text-sm text-brand-muted">Manage staff accounts and role assignments.</p>
       </div>
 
-      <div className="bg-brand-surface border border-brand-border rounded-xl overflow-hidden">
+      {/* ── Mobile card list (< md) ── */}
+      <div className="md:hidden bg-brand-surface border border-brand-border rounded-xl divide-y divide-brand-border overflow-hidden">
+        {users.map((u) => (
+          <div key={u.id} className="p-4 space-y-1">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <div className="font-medium text-sm truncate">{u.full_name}</div>
+                <div className="text-xs text-brand-muted truncate">{u.email}</div>
+              </div>
+              {u.id !== staff.id && (
+                <button
+                  type="button"
+                  onClick={() => handleStatusChange(u.id, u.status === "active" ? "inactive" : "active")}
+                  disabled={submitting}
+                  className={`shrink-0 text-xs ${u.status === "active" ? "text-danger" : "text-success"} hover:underline disabled:opacity-50`}
+                >
+                  {u.status === "active" ? "Deactivate" : "Reactivate"}
+                </button>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-brand-muted">
+              <span>{roleLabel(u.role)}</span>
+              <span className="capitalize">{u.status}</span>
+              <span>{formatDate(u.created_at)}</span>
+            </div>
+          </div>
+        ))}
+        {!users.length && (
+          <div className="px-4 py-10 text-center text-brand-muted text-sm">No staff yet.</div>
+        )}
+      </div>
+
+      {/* ── Desktop table (≥ md) ── */}
+      <div className="hidden md:block bg-brand-surface border border-brand-border rounded-xl overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-brand-muted text-xs uppercase tracking-wide">
             <tr>
@@ -191,7 +224,7 @@ export default function UsersPage() {
         </table>
       </div>
 
-      <div className="bg-brand-surface border border-brand-border rounded-xl p-5 max-w-lg">
+      <div className="bg-brand-surface border border-brand-border rounded-xl p-5 w-full max-w-lg">
         <h2 className="text-sm font-semibold text-brand-navy mb-4">Invite staff member</h2>
         <form onSubmit={handleInviteStaff} className="space-y-3">
           <input name="full_name" placeholder="Full name" required className="w-full rounded-md border border-brand-border px-3 py-2 text-sm" />
@@ -200,10 +233,10 @@ export default function UsersPage() {
             <option value="" disabled>Select role…</option>
             {assignableRoles.map((r) => <option key={r} value={r}>{roleLabel(r)}</option>)}
           </select>
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             disabled={submitting}
-            className="rounded-md bg-brand-navy text-white text-sm font-medium px-4 py-2 hover:bg-brand-navy-light transition disabled:opacity-50"
+            className="w-full sm:w-auto rounded-md bg-brand-navy text-white text-sm font-medium px-4 py-2 hover:bg-brand-navy-light transition disabled:opacity-50"
           >
             {submitting ? 'Sending...' : 'Send invite'}
           </button>

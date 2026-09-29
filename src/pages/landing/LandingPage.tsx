@@ -3,8 +3,10 @@ import type { ReactNode } from "react";
 import { LandingFooter, LandingHeader } from "./LandingChrome";
 import LoanCalculator from "./LoanCalculator";
 import { Icon } from "./landingUi";
+import { usePageTitle } from "../../lib/usePageTitle";
 
 export default function LandingPage() {
+  usePageTitle("TMU CashLoan CC — Fast Cash Loans in Namibia", true);
   return (
     <div data-surface="portal" id="top" className="bg-surface font-sans text-on-surface antialiased">
       <LandingHeader />

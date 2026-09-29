@@ -125,7 +125,7 @@ export default function NewApplicantPage() {
         <button
           type="submit"
           disabled={formStatus === "loading"}
-          className="rounded-md bg-brand-navy text-white text-sm font-medium px-5 py-2.5 hover:bg-brand-navy-light transition disabled:opacity-50"
+          className="w-full sm:w-auto rounded-md bg-brand-navy text-white text-sm font-medium px-5 py-2.5 hover:bg-brand-navy-light transition disabled:opacity-50"
         >
           {formStatus === "loading" ? "Saving…" : "Create applicant"}
         </button>

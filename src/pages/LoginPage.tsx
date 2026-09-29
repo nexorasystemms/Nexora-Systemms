@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { loginAdmin, verifyAdminLogin, sendPasswordResetCode, resetPassword } from "@/lib/supabase/auth";
+import { usePageTitle } from "@/lib/usePageTitle";
 
 type Stage = "password" | "email_otp" | "forgot_password" | "reset_code";
 
@@ -17,6 +18,7 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const next = searchParams.get("next") ?? "/dashboard";
+  usePageTitle("Staff Sign In");
 
   const [stage, setStage] = useState<Stage>("password");
   const [tempUserId, setTempUserId] = useState<string>("");

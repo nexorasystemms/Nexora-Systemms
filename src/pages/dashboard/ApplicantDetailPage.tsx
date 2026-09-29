@@ -85,14 +85,14 @@ export default function ApplicantDetailPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold text-brand-navy">{applicant.full_name}</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-xl font-semibold text-brand-navy truncate">{applicant.full_name}</h1>
           <p className="text-sm text-brand-muted">{applicant.mobile} · {applicant.residential_address}</p>
         </div>
         <Link
           to={`/dashboard/applications/new?applicantId=${applicant.id}`}
-          className="rounded-md bg-brand-navy text-white text-sm font-medium px-4 py-2 hover:bg-brand-navy-light transition"
+          className="shrink-0 rounded-md bg-brand-navy text-white text-sm font-medium px-4 py-2 hover:bg-brand-navy-light transition self-start sm:self-auto"
         >
           + New Application
         </Link>
@@ -107,7 +107,28 @@ export default function ApplicantDetailPage() {
 
       <div>
         <h2 className="text-sm font-semibold text-brand-navy mb-3">Applications</h2>
-        <div className="bg-brand-surface border border-brand-border rounded-xl overflow-hidden">
+
+        {/* ── Mobile card list (< md) ── */}
+        <div className="md:hidden bg-brand-surface border border-brand-border rounded-xl divide-y divide-brand-border overflow-hidden">
+          {applications.map((app) => (
+            <div key={app.id} className="p-4 space-y-1">
+              <Link to={`/dashboard/applications/${app.id}`} className="text-brand-blue font-semibold hover:underline block">
+                {app.reference_number}
+              </Link>
+              <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-brand-muted">
+                <span>{formatNad(app.amount_requested)}</span>
+                <StatusBadge status={app.status} />
+                <span>{formatDate(app.created_at)}</span>
+              </div>
+            </div>
+          ))}
+          {!applications.length && (
+            <div className="px-4 py-8 text-center text-brand-muted text-sm">No applications yet.</div>
+          )}
+        </div>
+
+        {/* ── Desktop table (≥ md) ── */}
+        <div className="hidden md:block bg-brand-surface border border-brand-border rounded-xl overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 text-brand-muted text-xs uppercase tracking-wide">
               <tr>
