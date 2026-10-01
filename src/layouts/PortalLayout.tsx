@@ -3,9 +3,10 @@ import { Link, Outlet, useLocation } from "react-router-dom";
 import { createClient } from "@/lib/supabase/client";
 import SignOutButton from "@/pages/portal/SignOutButton";
 import { usePageTitle } from "@/lib/usePageTitle";
+import { TMU_ROOT, tmuAssets, tmuPortal } from "@/lib/tenants";
 
 // Routes that render without the authenticated portal chrome
-const UNAUTHENTICATED_PATHS = ["/portal/login", "/portal/register"];
+const UNAUTHENTICATED_PATHS: string[] = [tmuPortal.login, tmuPortal.register];
 
 export default function PortalLayout() {
   const [user, setUser]         = useState<any>(null);
@@ -70,8 +71,12 @@ export default function PortalLayout() {
         <div className="h-16 sm:h-20 max-w-5xl mx-auto px-4 sm:px-6 flex items-center justify-between gap-4">
 
           {/* Left: logo + brand */}
-          <Link to="/portal" className="flex items-center gap-3 min-w-0 shrink-0">
-            <img src="/brand/nexora-logo-horizontal.png" alt="TMU CashLoan" className="h-7 sm:h-8 w-auto object-contain" />
+          <Link to={tmuPortal.home} className="flex items-center gap-3 min-w-0 shrink-0 h-12 overflow-hidden">
+            <img
+              src={tmuAssets.horizontal}
+              alt="Nexora Systems"
+              className="block h-9 w-[160px] sm:h-10 sm:w-[184px] object-contain object-left shrink-0"
+            />
             <div className="hidden sm:flex flex-col min-w-0">
               <span className="bg-surface-container-high text-primary px-2 py-0.5 rounded-full text-[11px] tracking-wider uppercase font-semibold w-fit whitespace-nowrap">
                 TMU CashLoan Portal
@@ -110,7 +115,7 @@ export default function PortalLayout() {
                 </button>
               </>
             ) : (
-              <Link to="/portal/login"
+              <Link to={tmuPortal.login}
                 className="text-sm font-semibold text-primary hover:underline min-h-[44px] flex items-center">
                 Sign in
               </Link>
@@ -127,17 +132,17 @@ export default function PortalLayout() {
               <div className="text-[12px] text-on-surface-variant truncate">{user.email}</div>
             </div>
             <div className="border-t border-outline-variant/20 pt-2 space-y-1">
-              <Link to="/portal"
+              <Link to={tmuPortal.home}
                 className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-on-surface hover:bg-surface-container transition-colors">
                 <span className="material-symbols-outlined text-[18px] text-primary">dashboard</span>
                 My Dashboard
               </Link>
-              <Link to="/portal/apply"
+              <Link to={tmuPortal.apply}
                 className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-on-surface hover:bg-surface-container transition-colors">
                 <span className="material-symbols-outlined text-[18px] text-primary">add_circle</span>
                 Apply for a Loan
               </Link>
-              <Link to="/tmu"
+              <Link to={TMU_ROOT}
                 className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-on-surface hover:bg-surface-container transition-colors">
                 <span className="material-symbols-outlined text-[18px] text-secondary">home</span>
                 TMU Home Page
@@ -165,9 +170,9 @@ export default function PortalLayout() {
           <p className="font-medium text-on-surface">TMU CashLoan CC — Registered Microlender (NAMFISA Reg. 25/11/1138)</p>
           <p className="mt-1">Independence Avenue, Windhoek, Namibia · Powered by Nexora Systems</p>
           <div className="mt-3 flex flex-wrap items-center justify-center gap-4 text-[11px]">
-            <Link to="/tmu" className="hover:text-on-surface transition-colors">TMU Home</Link>
-            <Link to="/portal/login" className="hover:text-on-surface transition-colors">Sign In</Link>
-            <Link to="/portal/register" className="hover:text-on-surface transition-colors">Register</Link>
+            <Link to={TMU_ROOT} className="hover:text-on-surface transition-colors">TMU Home</Link>
+            <Link to={tmuPortal.login} className="hover:text-on-surface transition-colors">Sign In</Link>
+            <Link to={tmuPortal.register} className="hover:text-on-surface transition-colors">Register</Link>
           </div>
         </div>
       </footer>

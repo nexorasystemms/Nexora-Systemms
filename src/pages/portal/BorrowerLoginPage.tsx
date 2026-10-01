@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { TMU_ROOT, tmuAssets, tmuPortal } from "../../lib/tenants";
 import { loginBorrower, sendPasswordResetCode, resetPassword } from "../../lib/supabase/auth";
 
 type Stage = "login" | "forgot_password" | "reset_code";
@@ -84,7 +85,7 @@ export default function BorrowerLoginPage() {
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault(); setError(null); setLoading(true);
     const r = await loginBorrower(email.trim().toLowerCase(), password);
-    if (r.success) { navigate("/portal"); }
+    if (r.success) { navigate(tmuPortal.home); }
     else { setError(r.error || "Login failed"); setLoading(false); }
   }
 
@@ -124,11 +125,13 @@ export default function BorrowerLoginPage() {
 
           {/* ── Card header ── */}
           <div className="px-6 pt-8 pb-6 text-center border-b border-slate-50">
-            <img
-              src="/brand/nexora-logo-stacked.png"
-              alt="TMU CashLoan"
-              className="mx-auto mb-4 h-16 w-auto object-contain"
-            />
+            <Link to={TMU_ROOT}>
+              <img
+                src={tmuAssets.stacked}
+                alt="Nexora Systems"
+                className="mx-auto mb-4 h-16 w-28 object-contain"
+              />
+            </Link>
             <span className="inline-block px-3 py-0.5 rounded-full bg-teal-50 text-teal-700 text-xs font-semibold mb-3">
               Borrower Portal
             </span>
@@ -207,11 +210,13 @@ export default function BorrowerLoginPage() {
           <div className="px-6 pb-7 text-center space-y-2">
             <p className="text-xs text-slate-500">
               New to TMU online?{" "}
-              <Link to="/portal/register" className="font-semibold text-indigo-700 hover:underline">
+              <Link to={tmuPortal.register} className="font-semibold text-indigo-700 hover:underline">
                 Create an Account
               </Link>
             </p>
             <p className="text-[11px] text-slate-400">
+              <Link to={TMU_ROOT} className="text-slate-500 hover:underline">Back to TMU Investments</Link>
+              {" · "}
               Staff?{" "}
               <Link to="/login" className="text-slate-500 hover:underline">Go to Staff Console</Link>
             </p>

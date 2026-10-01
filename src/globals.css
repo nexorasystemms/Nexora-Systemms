@@ -535,10 +535,9 @@ html, body {
   text-size-adjust: 100%;
 }
 
-/* Ensure every image and video is fluid by default */
+/* Images stay fluid unless a height utility (h-8, h-12, …) is set */
 img, video {
   max-width: 100%;
-  height: auto;
 }
 
 /* =========================================================================

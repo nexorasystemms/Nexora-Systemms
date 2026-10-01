@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { tmuPortal } from "../../lib/tenants";
 import { formatNad, Icon } from "./landingUi";
 
 const MAX_RATE = 0.3;
@@ -15,7 +16,7 @@ export default function LoanCalculator() {
     return { financeCharge, totalPayable, instalment };
   }, [principal, months]);
 
-  const applyHref = `/portal/register?amount=${principal}&months=${months}`;
+  const applyHref = `${tmuPortal.register}?amount=${principal}&months=${months}`;
 
   return (
     <div

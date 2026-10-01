@@ -5,6 +5,7 @@ import StageTracker from "./StageTracker";
 import BorrowerDocumentsCard from "./BorrowerDocumentsCard";
 import AgreementCard from "./AgreementCard";
 import RepaymentScheduleCard from "./RepaymentScheduleCard";
+import { tmuPortal } from "../../lib/tenants";
 import WelcomeMessage from "./WelcomeMessage";
 
 export default function BorrowerPortalPage() {
@@ -27,12 +28,12 @@ export default function BorrowerPortalPage() {
         const supabase = createClient();
 
         const { data: { session } } = await supabase.auth.getSession();
-        if (!session) { navigate('/portal/login'); return; }
+        if (!session) { navigate(tmuPortal.login); return; }
 
         const { data: userData } = await supabase
           .from('users').select('*').eq('id', session.user.id).single();
 
-        if (!userData || userData.role !== 'borrower') { navigate('/portal/login'); return; }
+        if (!userData || userData.role !== 'borrower') { navigate(tmuPortal.login); return; }
 
         setUser(userData);
 
@@ -123,7 +124,7 @@ export default function BorrowerPortalPage() {
         <p className="text-sm text-on-surface-variant mb-space-lg leading-relaxed">
           Your account is active. No application is linked yet — start one below or visit our branch.
         </p>
-        <Link to="/portal/apply" className="inline-block mb-space-lg px-space-lg py-space-sm rounded-xl bg-primary text-on-primary font-bold text-[13px] shadow-sm hover:opacity-90 transition">
+        <Link to={tmuPortal.apply} className="inline-block mb-space-lg px-space-lg py-space-sm rounded-xl bg-primary text-on-primary font-bold text-[13px] shadow-sm hover:opacity-90 transition">
           Start Cash Loan Application →
         </Link>
       </div>
@@ -137,7 +138,7 @@ export default function BorrowerPortalPage() {
         <p className="text-sm text-on-surface-variant mb-space-lg leading-relaxed">
           Hello {applicant.full_name}, you have no active loan applications under review.
         </p>
-        <Link to="/portal/apply" className="inline-block px-space-lg py-space-sm rounded-xl bg-primary text-on-primary font-bold text-[13px] shadow-sm hover:opacity-90 transition">
+        <Link to={tmuPortal.apply} className="inline-block px-space-lg py-space-sm rounded-xl bg-primary text-on-primary font-bold text-[13px] shadow-sm hover:opacity-90 transition">
           Apply for a Cash Loan →
         </Link>
       </div>
@@ -162,7 +163,7 @@ export default function BorrowerPortalPage() {
         </div>
         <div className="flex items-center gap-space-sm">
           {["settled", "declined", "withdrawn"].includes(currentApp.status) && (
-            <Link to="/portal/apply" className="px-space-md py-1.5 rounded-lg bg-primary text-on-primary text-[12px] font-semibold shadow-sm hover:opacity-90 transition">
+            <Link to={tmuPortal.apply} className="px-space-md py-1.5 rounded-lg bg-primary text-on-primary text-[12px] font-semibold shadow-sm hover:opacity-90 transition">
               + New Application
             </Link>
           )}

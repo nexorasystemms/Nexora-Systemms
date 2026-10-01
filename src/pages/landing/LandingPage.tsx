@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { LandingFooter, LandingHeader } from "./LandingChrome";
 import LoanCalculator from "./LoanCalculator";
 import { Icon } from "./landingUi";
+import { tmuPortal } from "../../lib/tenants";
 import { usePageTitle } from "../../lib/usePageTitle";
 
 export default function LandingPage() {
@@ -54,7 +55,7 @@ function Hero() {
             </p>
             <div className="flex flex-wrap items-center gap-2 pt-1">
               <Link
-                to="/portal/register"
+                to={tmuPortal.register}
                 className="inline-flex items-center gap-1 px-6 py-3 rounded-lg bg-primary hover:bg-primary-container text-on-primary text-sm font-semibold shadow-lg shadow-primary/10 transition-all hover:-translate-y-px"
               >
                 <span>Apply Online Now (3 Mins)</span>
@@ -327,7 +328,7 @@ function ProductCard({
         </div>
       </div>
       <Link
-        to="/portal/register"
+        to={tmuPortal.register}
         className={`w-full py-3 rounded-lg text-sm font-semibold text-center transition-all ${
           featured
             ? "bg-primary hover:bg-primary-container text-on-primary shadow-md"
@@ -653,14 +654,14 @@ function BottomCta() {
         </div>
         <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
           <Link
-            to="/portal/register"
+            to={tmuPortal.register}
             className="inline-flex items-center gap-1 px-8 py-3.5 rounded-lg bg-secondary hover:bg-on-secondary-fixed text-on-secondary font-headline text-lg font-semibold shadow-xl transition-all hover:scale-[1.02]"
           >
             <span>Start Your Application Now</span>
             <Icon name="arrow_forward" className="text-[20px]" />
           </Link>
           <Link
-            to="/portal/login"
+            to={tmuPortal.login}
             className="inline-flex items-center gap-1 px-6 py-3.5 rounded-lg bg-primary-container hover:bg-surface-container-high/20 text-on-primary text-sm font-medium transition-colors"
           >
             <Icon name="manage_accounts" className="text-[18px]" />

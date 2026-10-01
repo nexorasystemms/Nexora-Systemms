@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { TMU_ROOT, tmuAssets, tmuPortal } from "../../lib/tenants";
 import { Icon } from "./landingUi";
 
 const NAV = [
@@ -12,14 +13,20 @@ const NAV = [
 
 function BrandMark() {
   return (
-    <div className="flex items-center gap-3 shrink-0 min-w-0">
-      <img alt="TMU CashLoan" className="h-8 w-auto object-contain shrink-0" src="/brand/nexora-logo-horizontal.png" />
-      <div className="hidden sm:flex flex-col min-w-0">
-        <div className="flex items-center gap-1">
-          <span className="font-headline text-base font-bold text-primary tracking-tight leading-none">TMU CashLoan</span>
-          <span className="px-1 py-0.5 rounded-full bg-surface-container-high text-on-surface text-[10px] font-semibold shrink-0">CC</span>
-        </div>
-        <span className="font-mono text-[10px] text-on-surface-variant leading-none mt-0.5">Powered by Nexora Systems</span>
+    <div className="flex items-center gap-3 min-w-0 h-12">
+      <img
+        alt="Nexora Systems"
+        src={tmuAssets.horizontal}
+        className="block h-10 w-[168px] sm:h-11 sm:w-[200px] object-contain object-left shrink-0"
+      />
+      <span className="hidden sm:block w-px h-8 bg-outline-variant/40 shrink-0" aria-hidden />
+      <div className="hidden sm:flex flex-col justify-center min-w-0">
+        <span className="font-headline text-sm font-bold text-primary tracking-tight leading-none">
+          TMU Investments
+        </span>
+        <span className="font-mono text-[10px] text-on-surface-variant leading-none mt-1">
+          Cash Loans · Powered by Nexora
+        </span>
       </div>
     </div>
   );
@@ -30,8 +37,8 @@ export function LandingHeader() {
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-surface/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.06)]">
-      <div className="h-16 sm:h-20 max-w-[1280px] mx-auto px-4 md:px-8 flex items-center justify-between gap-4">
-        <a href="#top" className="shrink-0"><BrandMark /></a>
+      <div className="h-16 sm:h-20 max-w-[1280px] mx-auto px-4 md:px-8 flex items-center justify-between gap-4 overflow-hidden">
+        <Link to={TMU_ROOT} className="shrink-0 min-w-0 flex items-center"><BrandMark /></Link>
 
         {/* Desktop nav — lg+ (1024px) */}
         <nav className="hidden lg:flex items-center gap-1 flex-1 justify-center" aria-label="Primary">
@@ -45,12 +52,16 @@ export function LandingHeader() {
 
         <div className="flex items-center gap-2 shrink-0">
           {/* Sign In — sm+ only */}
-          <Link to="/portal/login"
+          <Link to="/"
+            className="hidden md:inline-flex items-center justify-center px-3 py-2 rounded-lg text-xs font-medium text-on-surface-variant hover:text-primary hover:bg-surface-container transition-colors">
+            Nexora
+          </Link>
+          <Link to={tmuPortal.login}
             className="hidden sm:inline-flex items-center justify-center px-4 py-2 rounded-lg text-sm font-medium text-primary hover:bg-surface-container transition-colors">
             Sign In
           </Link>
           {/* Apply Now — always visible */}
-          <Link to="/portal/register"
+          <Link to={tmuPortal.register}
             className="inline-flex items-center justify-center px-4 sm:px-6 py-2 rounded-lg bg-primary hover:bg-primary-container text-on-primary text-sm font-semibold shadow-sm transition-all whitespace-nowrap">
             Apply Now
           </Link>
@@ -76,11 +87,15 @@ export function LandingHeader() {
             </a>
           ))}
           <div className="pt-2 border-t border-outline-variant/20 flex flex-col gap-2">
-            <Link to="/portal/login" onClick={() => setOpen(false)}
+            <Link to="/" onClick={() => setOpen(false)}
+              className="flex items-center justify-center py-2.5 rounded-lg text-sm font-medium text-on-surface-variant hover:bg-surface-container transition-colors">
+              Back to Nexora
+            </Link>
+            <Link to={tmuPortal.login} onClick={() => setOpen(false)}
               className="flex items-center justify-center py-2.5 rounded-lg border border-outline-variant/60 text-sm font-medium text-primary hover:bg-surface-container transition-colors">
               Sign In to Portal
             </Link>
-            <Link to="/portal/register" onClick={() => setOpen(false)}
+            <Link to={tmuPortal.register} onClick={() => setOpen(false)}
               className="flex items-center justify-center py-2.5 rounded-lg bg-primary text-on-primary text-sm font-semibold shadow-sm hover:bg-primary-container transition-colors">
               Apply Now — 3 Minutes
             </Link>
@@ -98,8 +113,12 @@ export function LandingFooter() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
 
           <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <img alt="" className="h-7 w-auto object-contain" src="/brand/nexora-logo-horizontal.png" />
+            <div className="flex items-center gap-3">
+              <img
+                alt="Nexora Systems"
+                className="block h-10 w-16 object-contain object-left"
+                src={tmuAssets.stacked}
+              />
               <span className="font-headline text-base font-bold text-primary">TMU CashLoan CC</span>
             </div>
             <p className="text-sm text-on-surface-variant leading-relaxed">
@@ -168,6 +187,7 @@ export function LandingFooter() {
             <a className="hover:text-on-surface transition-colors" href="#compliance">Privacy Policy</a>
             <a className="hover:text-on-surface transition-colors" href="#compliance">Terms of Service</a>
             <a className="hover:text-on-surface transition-colors" href="#compliance">Statutory Filings</a>
+            <Link to="/" className="hover:text-on-surface transition-colors">Nexora Systems</Link>
             <Link className="hover:text-on-surface transition-colors" to="/login">Staff Portal</Link>
           </div>
         </div>

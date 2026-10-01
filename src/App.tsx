@@ -1,5 +1,6 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
+import { TMU_ROOT } from './lib/tenants'
 import ProtectedRoute from './components/ProtectedRoute'
 import LoginPage from './pages/LoginPage'
 import DashboardLayout from './layouts/DashboardLayout'
@@ -30,13 +31,18 @@ function App() {
         {/* Public routes */}
         <Route path="/login" element={<LoginPage />} />
         
-        {/* Portal routes */}
-        <Route path="/portal" element={<PortalLayout />}>
+        {/* TMU Investments — cash loan site + borrower portal */}
+        <Route path={TMU_ROOT} element={<LandingPage />} />
+        <Route path={`${TMU_ROOT}/portal`} element={<PortalLayout />}>
           <Route index element={<BorrowerPortalPage />} />
           <Route path="login" element={<BorrowerLoginPage />} />
           <Route path="register" element={<BorrowerRegisterPage />} />
           <Route path="apply" element={<BorrowerApplyPage />} />
         </Route>
+        <Route path="/tmu" element={<Navigate to={TMU_ROOT} replace />} />
+        <Route path="/tmu-cashloan" element={<Navigate to={TMU_ROOT} replace />} />
+        <Route path="/portal/*" element={<LegacyPortalRedirect />} />
+        <Route path="/portal" element={<LegacyPortalRedirect />} />
         
         {/* Protected dashboard routes */}
         <Route path="/dashboard" element={
@@ -58,17 +64,17 @@ function App() {
           <Route path="pilot-guardrails" element={<PilotGuardrailsPage />} />
         </Route>
         
-        {/* TMU Investments Tenant routes */}
-        <Route path="/tmu" element={<LandingPage />} />
-        <Route path="/tmu-investments" element={<LandingPage />} />
-        <Route path="/tmu-cashloan" element={<LandingPage />} />
-
         {/* Nexora Systems Flagship Homepage */}
         <Route path="/" element={<NexoraHomePage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AuthProvider>
   )
+}
+
+function LegacyPortalRedirect() {
+  const { pathname, search, hash } = useLocation()
+  return <Navigate to={`${TMU_ROOT}${pathname}${search}${hash}`} replace />
 }
 
 export default App

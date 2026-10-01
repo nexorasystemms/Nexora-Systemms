@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { tmuPortal } from "../../lib/tenants";
 import { signOut } from "../../lib/supabase/auth";
 
 export default function SignOutButton() {
@@ -6,7 +7,7 @@ export default function SignOutButton() {
 
   async function handleSignOut() {
     await signOut();
-    navigate('/portal/login');
+    navigate(tmuPortal.login);
   }
 
   return (

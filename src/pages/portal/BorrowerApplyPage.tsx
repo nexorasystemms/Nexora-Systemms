@@ -1,5 +1,6 @@
 import { useState, useTransition } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { tmuPortal } from "../../lib/tenants";
 import { submitBorrowerApplication } from "../../lib/supabase/stubs";
 
 export default function BorrowerApplyPage() {
@@ -84,7 +85,7 @@ export default function BorrowerApplyPage() {
     startTransition(async () => {
       try {
         await submitBorrowerApplication(formData);
-        navigate("/portal");
+        navigate(tmuPortal.home);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to submit application.");
       }
@@ -312,7 +313,7 @@ export default function BorrowerApplyPage() {
                   ← Back
                 </button>
               ) : (
-                <Link to="/portal"
+                <Link to={tmuPortal.home}
                   className="text-xs text-slate-500 hover:text-slate-700 font-medium py-2.5 min-h-[44px] flex items-center">
                   Cancel
                 </Link>

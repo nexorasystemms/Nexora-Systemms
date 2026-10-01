@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { TMU_ROOT, tmuAssets, tmuPortal } from "../../lib/tenants";
 import { registerBorrower, verifyBorrowerEmail } from "../../lib/supabase/auth";
 
 const RESEND_COOLDOWN = 30;
@@ -68,7 +69,7 @@ function VerificationCard({
   async function handleVerify(e: React.FormEvent) {
     e.preventDefault(); setStatus("loading"); setErrorMsg("");
     const r = await verifyBorrowerEmail(tempUserId, code);
-    if (r.success) { window.location.href = "/portal?message=welcome"; }
+    if (r.success) { window.location.href = `${tmuPortal.home}?message=welcome`; }
     else { setStatus("error"); setErrorMsg(r.error || "Verification failed"); }
   }
 
@@ -77,7 +78,9 @@ function VerificationCard({
       <div className="w-full max-w-md">
         <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
           <div className="px-6 pt-8 pb-6 text-center border-b border-slate-50">
-            <img src="/brand/nexora-logo-stacked.png" alt="TMU CashLoan" className="mx-auto mb-4 h-16 w-auto object-contain" />
+            <Link to={TMU_ROOT}>
+              <img src={tmuAssets.stacked} alt="Nexora Systems" className="mx-auto mb-4 h-16 w-28 object-contain" />
+            </Link>
             <span className="inline-block px-3 py-0.5 rounded-full bg-teal-50 text-teal-700 text-xs font-semibold mb-3">
               Email Verification
             </span>
@@ -126,7 +129,7 @@ function VerificationCard({
           <div className="px-6 pb-7 text-center">
             <p className="text-xs text-slate-500">
               Already have an account?{" "}
-              <Link to="/portal/login" className="font-semibold text-indigo-700 hover:underline">Sign In</Link>
+              <Link to={tmuPortal.login} className="font-semibold text-indigo-700 hover:underline">Sign In</Link>
             </p>
           </div>
         </div>
@@ -184,7 +187,9 @@ export default function BorrowerRegisterPage() {
 
           {/* ── Header ── */}
           <div className="px-6 pt-8 pb-6 text-center border-b border-slate-50">
-            <img src="/brand/nexora-logo-stacked.png" alt="TMU CashLoan" className="mx-auto mb-4 h-16 w-auto object-contain" />
+            <Link to={TMU_ROOT}>
+              <img src={tmuAssets.stacked} alt="Nexora Systems" className="mx-auto mb-4 h-16 w-28 object-contain" />
+            </Link>
             <span className="inline-block px-3 py-0.5 rounded-full bg-teal-50 text-teal-700 text-xs font-semibold mb-3">
               New Account Registration
             </span>
@@ -244,7 +249,10 @@ export default function BorrowerRegisterPage() {
           <div className="px-6 pb-7 text-center">
             <p className="text-xs text-slate-500">
               Already have an account?{" "}
-              <Link to="/portal/login" className="font-semibold text-indigo-700 hover:underline">Sign In</Link>
+              <Link to={tmuPortal.login} className="font-semibold text-indigo-700 hover:underline">Sign In</Link>
+            </p>
+            <p className="text-[11px] text-slate-400 mt-2">
+              <Link to={TMU_ROOT} className="hover:underline">Back to TMU Investments</Link>
             </p>
           </div>
         </div>
