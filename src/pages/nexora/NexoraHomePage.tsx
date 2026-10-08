@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { usePageTitle } from "../../lib/usePageTitle";
-import { TMU_ROOT, tmuPortal } from "../../lib/tenants";
 
 /* ─── Types ─────────────────────────────────────────────────────────────── */
 interface Agent {
@@ -205,30 +204,10 @@ function NavBar() {
               {link.label}
             </a>
           ))}
-          <Link
-            to={TMU_ROOT}
-            className={`nav-link-animated px-3.5 py-2 text-[14px] font-medium rounded-lg transition-colors ${
-              scrolled
-                ? "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-                : "text-white/85 hover:text-white hover:bg-white/10"
-            }`}
-          >
-            TMU Loans
-          </Link>
         </nav>
 
         {/* CTA group */}
         <div className="flex items-center gap-3 shrink-0">
-          <Link
-            to={TMU_ROOT}
-            className={`hidden sm:inline-flex items-center h-10 px-4 text-[13px] font-semibold rounded-lg transition-colors ${
-              scrolled
-                ? "text-primary hover:bg-surface-container"
-                : "text-white/90 hover:bg-white/10"
-            }`}
-          >
-            Apply for a cash loan
-          </Link>
           <a
             href="#contact"
             className="hidden sm:inline-flex items-center gap-1.5 h-10 px-5 text-[13px] font-semibold text-on-primary bg-primary hover:bg-primary-container rounded-lg shadow-sm shadow-primary/20 hover:shadow-md hover:shadow-primary/25 transition-all hover:-translate-y-px"
@@ -267,24 +246,8 @@ function NavBar() {
                 {link.label}
               </a>
             ))}
-            <Link
-              to={TMU_ROOT}
-              onClick={() => setMobileOpen(false)}
-              className={`flex items-center px-4 py-3 rounded-xl text-[15px] font-medium transition-colors ${
-                scrolled ? "text-gray-800 hover:bg-gray-100" : "text-white/90 hover:bg-white/10"
-              }`}
-            >
-              TMU Loans
-            </Link>
           </div>
           <div className={`pt-4 border-t space-y-2.5 ${scrolled ? "border-gray-100" : "border-white/10"}`}>
-            <Link
-              to={TMU_ROOT}
-              onClick={() => setMobileOpen(false)}
-              className="flex items-center justify-center gap-2 py-3 rounded-xl border border-primary/30 text-primary bg-primary/5 text-[14px] font-semibold"
-            >
-              Apply for a TMU cash loan
-            </Link>
             <a
               href="#contact"
               onClick={() => setMobileOpen(false)}
@@ -346,20 +309,6 @@ function Hero() {
             Hire an AI Employee
             <Icon name="arrow_forward" className="text-[16px]" />
           </a>
-          <a
-            href="#how-it-works"
-            className="inline-flex items-center gap-2 h-12 px-8 rounded-xl bg-white/10 backdrop-blur-sm border border-white/30 text-white text-[15px] font-medium hover:bg-white/20 hover:border-white/50 transition-all hover:-translate-y-0.5 shadow-sm"
-          >
-            <Icon name="play_circle" className="text-[18px] text-white/80" />
-            See How It Works
-          </a>
-          <Link
-            to={TMU_ROOT}
-            className="inline-flex items-center gap-2 h-12 px-8 rounded-xl bg-white text-primary text-[15px] font-semibold hover:bg-white/90 transition-all hover:-translate-y-0.5 shadow-sm"
-          >
-            TMU Investments — Apply for a cash loan
-            <Icon name="arrow_forward" className="text-[16px]" />
-          </Link>
         </div>
       </div>
     </section>
@@ -671,65 +620,6 @@ function Industries() {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   LIVE CLIENTS
-   ═══════════════════════════════════════════════════════════════════════════ */
-function LiveClients() {
-  const ref = useReveal();
-  return (
-    <section id="clients" className="w-full py-20 bg-surface-container-low border-y border-outline-variant/30">
-      <div className="max-w-7xl mx-auto px-4 md:px-8">
-        <div ref={ref} className="reveal text-center max-w-2xl mx-auto mb-12">
-          <span className="inline-block font-mono text-[11px] uppercase tracking-widest text-primary font-bold mb-3 px-3 py-1 bg-surface-container rounded-full border border-outline-variant/40">
-            Live on Nexora
-          </span>
-          <h2 className="text-[32px] md:text-[40px] font-bold text-on-surface leading-tight tracking-tight">
-            Client platforms you can use today
-          </h2>
-          <p className="mt-3 text-[15px] text-on-surface-variant leading-relaxed">
-            Each client runs as its own site on the Nexora domain — open it from here, or go directly to{" "}
-            <span className="font-mono text-[13px] text-on-surface">{TMU_ROOT}</span>.
-          </p>
-        </div>
-
-        <div className="max-w-3xl mx-auto reveal delay-100 rounded-2xl border border-outline-variant/40 bg-surface overflow-hidden shadow-lg">
-          <div className="grid grid-cols-1 md:grid-cols-5">
-            <div
-              className="md:col-span-2 min-h-[180px] bg-cover bg-center"
-              style={{ backgroundImage: "url('/Financial Services.jpg')" }}
-              aria-hidden
-            />
-            <div className="md:col-span-3 p-6 md:p-8 flex flex-col justify-center gap-3">
-              <span className="font-mono text-[11px] uppercase tracking-widest text-secondary font-bold">
-                First client · Namibia
-              </span>
-              <h3 className="text-[22px] font-bold text-on-surface">TMU Investments — Cash Loans</h3>
-              <p className="text-[14px] text-on-surface-variant leading-relaxed">
-                Apply online for a NAMFISA-registered cash loan, simulate repayments, and track your application in the borrower portal.
-              </p>
-              <div className="flex flex-wrap gap-2 pt-2">
-                <Link
-                  to={TMU_ROOT}
-                  className="inline-flex items-center gap-2 h-11 px-5 rounded-xl bg-primary text-on-primary text-[13px] font-semibold hover:bg-primary-container transition-colors"
-                >
-                  Open TMU Investments
-                  <Icon name="arrow_forward" className="text-[16px]" />
-                </Link>
-                <Link
-                  to={tmuPortal.register}
-                  className="inline-flex items-center h-11 px-5 rounded-xl border border-outline-variant/60 text-primary text-[13px] font-semibold hover:bg-surface-container transition-colors"
-                >
-                  Start an application
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
    SECURITY / ARCHITECTURE
    ═══════════════════════════════════════════════════════════════════════════ */
 function SecuritySection() {
@@ -950,16 +840,16 @@ function Footer() {
             <a href="#architecture" className="text-[13px] text-on-surface-variant hover:text-primary transition-colors">Security &amp; Compliance</a>
           </div>
 
-          {/* Tenants */}
+          {/* Company */}
           <div className="flex flex-col space-y-3">
             <h4 className="font-mono text-[11px] font-bold uppercase tracking-wider text-on-surface-variant h-8 flex items-center">
-              Live Tenants
+              Company
             </h4>
-            <Link to={TMU_ROOT} className="inline-flex items-center gap-2 text-[13px] text-on-surface-variant hover:text-primary transition-colors group">
-              <span className="w-1.5 h-1.5 rounded-full bg-tertiary shrink-0 group-hover:scale-125 transition-transform" />
-              TMU Investments — Cash Loans
-            </Link>
-            <p className="text-[12px] text-on-surface-variant/60 italic pt-1">More tenants launching Q3 2026</p>
+            <a href="#contact" className="text-[13px] text-on-surface-variant hover:text-primary transition-colors">Book a Demo</a>
+            <a href="mailto:info@nexorasystems.solutions" className="text-[13px] text-primary hover:underline transition-colors flex items-center gap-1.5">
+              <Icon name="mail" className="text-[15px]" />
+              info@nexorasystems.solutions
+            </a>
           </div>
 
           {/* Links */}
@@ -967,12 +857,8 @@ function Footer() {
             <h4 className="font-mono text-[11px] font-bold uppercase tracking-wider text-on-surface-variant h-8 flex items-center">
               Platform
             </h4>
-            <Link to={tmuPortal.login} className="text-[13px] text-on-surface-variant hover:text-primary transition-colors">Borrower Portal</Link>
-            <a href="#contact" className="text-[13px] text-on-surface-variant hover:text-primary transition-colors">Book a Demo</a>
-            <a href="mailto:info@nexorasystems.solutions" className="text-[13px] text-primary hover:underline transition-colors pt-1 flex items-center gap-1.5">
-              <Icon name="mail" className="text-[15px]" />
-              info@nexorasystems.solutions
-            </a>
+            <a href="#architecture" className="text-[13px] text-on-surface-variant hover:text-primary transition-colors">Security Overview</a>
+            <a href="#contact" className="text-[13px] text-on-surface-variant hover:text-primary transition-colors">Contact</a>
           </div>
         </div>
 
@@ -1003,7 +889,6 @@ export default function NexoraHomePage() {
         <TransformationSection />
         <AgentCatalogue />
         <Industries />
-        <LiveClients />
         <SecuritySection />
         <ContactSection />
       </main>

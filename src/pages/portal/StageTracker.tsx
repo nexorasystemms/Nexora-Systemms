@@ -1,4 +1,5 @@
 import type { ApplicationStatus } from "../../types/database";
+import { declineReasonLabel } from "../../lib/decline-reasons";
 
 interface StageTrackerProps {
   status: ApplicationStatus;
@@ -6,6 +7,7 @@ interface StageTrackerProps {
   amountRequested: number;
   approvedAmount?: number | null;
   declineReasonCode?: string | null;
+  declineReasonNotes?: string | null;
   arrearsDaysPastDue?: number | null;
   arrearsPenalty?: number | null;
 }
@@ -40,7 +42,7 @@ function stepStyles(isDeclined: boolean, isCompleted: boolean, isCurrent: boolea
 
 export default function StageTracker({
   status, nextPayDate, amountRequested, approvedAmount,
-  declineReasonCode, arrearsDaysPastDue, arrearsPenalty,
+  declineReasonCode, declineReasonNotes, arrearsDaysPastDue, arrearsPenalty,
 }: StageTrackerProps) {
   const isDeclined    = status === "declined";
   const isAwaitingDocs = status === "awaiting_documents";
@@ -113,7 +115,7 @@ export default function StageTracker({
 
   const bannerBody =
     isDeclined
-      ? `Reason: ${declineReasonCode?.replaceAll("_", " ") ?? "did not meet affordability criteria"}. You may contact your loan officer for details, or reapply once your circumstances change.`
+      ? `Reason: ${declineReasonLabel(declineReasonCode)}.${declineReasonNotes ? ` ${declineReasonNotes}` : ""} You may contact your loan officer, or reapply once your circumstances change.`
     : isHandedOver
       ? "Please contact TMU CashLoan CC directly to arrange settlement and avoid further collection action."
     : isInArrears

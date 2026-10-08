@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { TMU_ROOT, tmuAssets, tmuPortal } from "../../lib/tenants";
 import { registerBorrower, verifyBorrowerEmail } from "../../lib/supabase/auth";
+import { resendVerificationCode } from "../../lib/supabase/admin";
 
 const RESEND_COOLDOWN = 30;
 
@@ -24,7 +25,7 @@ function Field({
       <input
         id={name} name={name} type={type} required={required} placeholder={placeholder}
         className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white text-sm text-slate-900 placeholder-slate-400
-                   focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 transition-colors"
+                   focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-colors"
       />
       {hint && <p className="mt-1 text-[11px] text-slate-400">{hint}</p>}
     </div>
@@ -42,7 +43,7 @@ function SelectField({
       <select
         id={name} name={name} required={required} defaultValue=""
         className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white text-sm text-slate-900
-                   focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 transition-colors appearance-none"
+                   focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-colors appearance-none"
       >
         <option value="" disabled>Select…</option>
         {options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
@@ -68,7 +69,7 @@ function VerificationCard({
 
   async function handleVerify(e: React.FormEvent) {
     e.preventDefault(); setStatus("loading"); setErrorMsg("");
-    const r = await verifyBorrowerEmail(tempUserId, code);
+    const r = await verifyBorrowerEmail(tempUserId, code, email);
     if (r.success) { window.location.href = `${tmuPortal.home}?message=welcome`; }
     else { setStatus("error"); setErrorMsg(r.error || "Verification failed"); }
   }
@@ -79,9 +80,9 @@ function VerificationCard({
         <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
           <div className="px-6 pt-8 pb-6 text-center border-b border-slate-50">
             <Link to={TMU_ROOT}>
-              <img src={tmuAssets.stacked} alt="Nexora Systems" className="mx-auto mb-4 h-16 w-28 object-contain" />
+              <img src={tmuAssets.logo} alt="TMU Capital Pty Ltd" className="mx-auto mb-4 h-12 w-[220px] object-contain" />
             </Link>
-            <span className="inline-block px-3 py-0.5 rounded-full bg-teal-50 text-teal-700 text-xs font-semibold mb-3">
+            <span className="inline-block px-3 py-0.5 rounded-full bg-secondary-container text-on-secondary-container text-xs font-semibold mb-3">
               Email Verification
             </span>
             <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Verify Your Email</h1>
@@ -100,22 +101,35 @@ function VerificationCard({
                 <input
                   id="vcode" type="text" inputMode="numeric" pattern="[0-9]*" maxLength={8} required autoFocus
                   value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-                  placeholder="Enter 8-digit code"
+                  placeholder="Enter the code from your email"
                   className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white text-sm text-center tracking-[0.3em]
-                             focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 transition-colors"
+                             focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-colors"
                 />
               </div>
               <button
-                type="submit" disabled={status === "loading" || code.length !== 8}
-                className="w-full py-3.5 rounded-xl bg-indigo-900 hover:bg-indigo-800 text-white font-semibold text-sm
+                type="submit" disabled={status === "loading" || code.length < 6}
+                className="w-full py-3.5 rounded-xl bg-tertiary hover:opacity-90 text-on-tertiary font-semibold text-sm
                            transition-all disabled:opacity-50 shadow-sm min-h-[48px]"
               >
                 {status === "loading" ? "Verifying…" : "Verify Email & Complete Registration"}
               </button>
               <div className="flex items-center justify-between text-xs text-slate-500">
                 <button
-                  type="button" onClick={() => setCooldown(RESEND_COOLDOWN)} disabled={cooldown > 0}
-                  className="text-indigo-700 hover:underline disabled:text-slate-400 disabled:no-underline min-h-[44px] px-1"
+                  type="button"
+                  onClick={async () => {
+                    if (cooldown > 0) return;
+                    const sent = await resendVerificationCode(tempUserId, "registration", email);
+                    if (!sent.success) {
+                      setStatus("error");
+                      setErrorMsg(sent.error || "Could not resend the code. Try again in a moment.");
+                      return;
+                    }
+                    setStatus("idle");
+                    setErrorMsg("");
+                    setCooldown(RESEND_COOLDOWN);
+                  }}
+                  disabled={cooldown > 0}
+                  className="text-secondary hover:underline disabled:text-slate-400 disabled:no-underline min-h-[44px] px-1"
                 >
                   {cooldown > 0 ? `Resend (${cooldown}s)` : "Resend code"}
                 </button>
@@ -129,7 +143,7 @@ function VerificationCard({
           <div className="px-6 pb-7 text-center">
             <p className="text-xs text-slate-500">
               Already have an account?{" "}
-              <Link to={tmuPortal.login} className="font-semibold text-indigo-700 hover:underline">Sign In</Link>
+              <Link to={tmuPortal.login} className="font-semibold text-secondary hover:underline">Sign In</Link>
             </p>
           </div>
         </div>
@@ -188,9 +202,9 @@ export default function BorrowerRegisterPage() {
           {/* ── Header ── */}
           <div className="px-6 pt-8 pb-6 text-center border-b border-slate-50">
             <Link to={TMU_ROOT}>
-              <img src={tmuAssets.stacked} alt="Nexora Systems" className="mx-auto mb-4 h-16 w-28 object-contain" />
+              <img src={tmuAssets.logo} alt="TMU Capital Pty Ltd" className="mx-auto mb-4 h-12 w-[220px] object-contain" />
             </Link>
-            <span className="inline-block px-3 py-0.5 rounded-full bg-teal-50 text-teal-700 text-xs font-semibold mb-3">
+            <span className="inline-block px-3 py-0.5 rounded-full bg-secondary-container text-on-secondary-container text-xs font-semibold mb-3">
               New Account Registration
             </span>
             <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Create Borrower Account</h1>
@@ -237,7 +251,7 @@ export default function BorrowerRegisterPage() {
 
               <button
                 type="submit" disabled={regStatus === "loading"}
-                className="w-full py-3.5 rounded-xl bg-indigo-900 hover:bg-indigo-800 text-white font-semibold text-sm
+                className="w-full py-3.5 rounded-xl bg-tertiary hover:opacity-90 text-on-tertiary font-semibold text-sm
                            transition-all disabled:opacity-50 shadow-sm min-h-[48px]"
               >
                 {regStatus === "loading" ? "Creating Account…" : "Create Account"}
@@ -249,7 +263,7 @@ export default function BorrowerRegisterPage() {
           <div className="px-6 pb-7 text-center">
             <p className="text-xs text-slate-500">
               Already have an account?{" "}
-              <Link to={tmuPortal.login} className="font-semibold text-indigo-700 hover:underline">Sign In</Link>
+              <Link to={tmuPortal.login} className="font-semibold text-secondary hover:underline">Sign In</Link>
             </p>
             <p className="text-[11px] text-slate-400 mt-2">
               <Link to={TMU_ROOT} className="hover:underline">Back to TMU Investments</Link>

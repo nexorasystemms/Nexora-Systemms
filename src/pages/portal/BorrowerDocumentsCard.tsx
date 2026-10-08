@@ -1,6 +1,6 @@
 import { useState, useTransition } from "react";
 import type { DocumentRow } from "../../types/database";
-import { borrowerUploadDocument } from "../../lib/supabase/stubs";
+import { openDocument, uploadDocument } from "../../lib/supabase/applications";
 
 const DOC_TYPES: [string, string][] = [
   ["id", "National ID / Passport"],
@@ -17,7 +17,7 @@ const STATUS_STYLE: Record<string, { bg: string; label: string }> = {
 };
 
 export default function BorrowerDocumentsCard({
-  applicationId: _applicationId,
+  applicationId,
   documents,
   canUpload = true,
 }: {
@@ -40,18 +40,14 @@ export default function BorrowerDocumentsCard({
     setError(null);
     setSuccess(false);
 
-    const formData = new FormData();
-    formData.set("file", file);
-    formData.set("doc_type", docType);
-
     startTransition(async () => {
-      try {
-        await borrowerUploadDocument(formData);
-        setSuccess(true);
-        setFile(null);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to upload document");
+      const result = await uploadDocument(applicationId, file, docType);
+      if (!result.success) {
+        setError(result.error || "Failed to upload document");
+        return;
       }
+      setSuccess(true);
+      setFile(null);
     });
   }
 
@@ -85,6 +81,16 @@ export default function BorrowerDocumentsCard({
                     </div>
                   )}
                 </div>
+                <button
+                  type="button"
+                  className="text-xs font-semibold text-primary hover:underline"
+                  onClick={async () => {
+                    const opened = await openDocument(doc.file_path);
+                    if (opened.data?.signedUrl) window.open(opened.data.signedUrl, "_blank", "noopener,noreferrer");
+                  }}
+                >
+                  View
+                </button>
               </div>
             );
           })

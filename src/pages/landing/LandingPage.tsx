@@ -5,6 +5,7 @@ import LoanCalculator from "./LoanCalculator";
 import { Icon } from "./landingUi";
 import { tmuPortal } from "../../lib/tenants";
 import { usePageTitle } from "../../lib/usePageTitle";
+import { LOAN_PRODUCTS } from "../../lib/loan-products";
 
 export default function LandingPage() {
   usePageTitle("TMU CashLoan CC — Fast Cash Loans in Namibia", true);
@@ -215,10 +216,10 @@ function Products() {
               Statutory Loan Classes
             </span>
             <h2 className="font-headline text-3xl md:text-[40px] text-primary font-bold">
-              Tailored Facilities for Every Life Stage
+              Three TMU loan applications
             </h2>
             <p className="text-base text-on-surface-variant">
-              Choose a registered financial instrument tailored to your employment contract and cashflow cycle.
+              Personal loan with no payslip, first-time applications with a credit check, and tender finance that requires a purchase order.
             </p>
           </div>
           <span className="inline-flex items-center gap-1 px-4 py-1.5 rounded-full bg-surface-container text-on-surface font-mono text-[11px]">
@@ -227,44 +228,24 @@ function Products() {
           </span>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <ProductCard
-            badge="1 MONTH"
-            side="Payday Bridging"
-            title="Payday Cash Advance"
-            body="Rapid bridge capital for unexpected vehicle repairs, urgent medical fees, or family emergencies before your next scheduled salary run."
-            rows={[
-              ["Loan Range:", "N$ 500 – N$ 5,000"],
-              ["Settlement:", "Bullet single payment"],
-              ["Finance Rate:", "Max 30% Usury Ceiling"],
-            ]}
-            cta="Apply for Payday Advance"
-            featured={false}
-          />
-          <ProductCard
-            badge="2 TO 6 MONTHS"
-            title="Short-Term Instalment"
-            body="Smooth structured liquidity amortized evenly across multiple paychecks, lowering monthly pressure with equal principal balance paydowns."
-            rows={[
-              ["Loan Range:", "N$ 1,500 – N$ 15,000", true],
-              ["Settlement:", "Equal monthly debit order"],
-              ["Early Settlement:", "Zero penalty charges"],
-            ]}
-            cta="Apply for Instalment Loan"
-            featured
-          />
-          <ProductCard
-            badge="UP TO 12 MONTHS"
-            side="Civil Service"
-            title="Government & Payroll Scheme"
-            body="Preferential tier for employees of Ministry of Health, Ministry of Education, Nampol, and confirmed corporate payroll agreements."
-            rows={[
-              ["Loan Range:", "N$ 5,000 – N$ 25,000"],
-              ["Settlement:", "Payroll deduction / EFT"],
-              ["Documentation:", "Government payslip"],
-            ]}
-            cta="Apply for Civil Payroll Facility"
-            featured={false}
-          />
+          {LOAN_PRODUCTS.map((p, i) => (
+            <ProductCard
+              key={p.id}
+              badge={p.badge}
+              side={p.side}
+              title={p.title}
+              body={p.summary}
+              rows={[
+                ["Lender:", p.lender],
+                ["Loan range:", `N$ ${p.minAmount.toLocaleString()} – N$ ${p.maxAmount.toLocaleString()}`, i === 1],
+                ["Settlement:", p.settlement],
+                [p.extraRow[0] + ":", p.extraRow[1]],
+              ]}
+              cta={`Apply for ${p.title}`}
+              href={`${tmuPortal.apply}?product=${p.id}`}
+              featured={i === 1}
+            />
+          ))}
         </div>
       </div>
     </section>
@@ -278,6 +259,7 @@ function ProductCard({
   body,
   rows,
   cta,
+  href,
   featured,
 }: {
   badge: string;
@@ -286,6 +268,7 @@ function ProductCard({
   body: string;
   rows: Array<[string, string] | [string, string, boolean]>;
   cta: string;
+  href: string;
   featured: boolean;
 }) {
   return (
@@ -328,7 +311,7 @@ function ProductCard({
         </div>
       </div>
       <Link
-        to={tmuPortal.register}
+        to={href}
         className={`w-full py-3 rounded-lg text-sm font-semibold text-center transition-all ${
           featured
             ? "bg-primary hover:bg-primary-container text-on-primary shadow-md"

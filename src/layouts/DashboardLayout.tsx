@@ -170,6 +170,7 @@ export default function DashboardLayout() {
           <span className="font-semibold text-on-surface truncate">{user.full_name}</span>
           <SignOutButton />
         </div>
+        <NavLink href="/dashboard/account" icon="mail" label="Change email" />
         <span className="text-[11px] text-on-surface-variant truncate">{roleLabel(user.role!)}</span>
         <div className="flex items-center gap-space-xs text-[10px] text-on-surface-variant">
           <span className="material-symbols-outlined text-[13px] text-tertiary-container">lock</span>

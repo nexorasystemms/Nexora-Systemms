@@ -14,11 +14,20 @@ export const tmuPortal = {
   login: `${TMU_PORTAL}/login`,
   register: `${TMU_PORTAL}/register`,
   apply: `${TMU_PORTAL}/apply`,
+  account: `${TMU_PORTAL}/account`,
 } as const;
 
-/** Logos and photos from nexora-cash-loan-services */
+export const tmuContact = {
+  phone: "+264 85 218 3350",
+  landline: "+264 61 225 801",
+  email: "tmuinvestment@outlook.com",
+  address: "Independence Avenue, Windhoek, Namibia",
+} as const;
+
+/** TMU Holdings brand assets (tenant-specific; Nexora house brand stays on /) */
 export const tmuAssets = {
-  horizontal: "/tmu/nexora-horizontal.png",
-  stacked: "/tmu/nexora-stacked.png",
+  logo: "/tmu/tmu-holdings-logo.png",
+  horizontal: "/tmu/tmu-holdings-logo.png",
+  stacked: "/tmu/tmu-holdings-logo.png",
   office: "/tmu/loan-office.jpg",
 } as const;

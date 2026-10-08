@@ -21,7 +21,10 @@ import BorrowerPortalPage from './pages/portal/BorrowerPortalPage'
 import BorrowerLoginPage from './pages/portal/BorrowerLoginPage'
 import BorrowerRegisterPage from './pages/portal/BorrowerRegisterPage'
 import BorrowerApplyPage from './pages/portal/BorrowerApplyPage'
-import LandingPage from './pages/landing/LandingPage'
+import BorrowerAccountPage from './pages/portal/BorrowerAccountPage'
+import AccountPage from './pages/dashboard/AccountPage'
+import ApplicationDetailPage from './pages/dashboard/ApplicationDetailPage'
+import CashLoanHomePage from './pages/cashloan/CashLoanHomePage'
 import NexoraHomePage from './pages/nexora/NexoraHomePage'
 
 function App() {
@@ -32,12 +35,13 @@ function App() {
         <Route path="/login" element={<LoginPage />} />
         
         {/* TMU Investments — cash loan site + borrower portal */}
-        <Route path={TMU_ROOT} element={<LandingPage />} />
+        <Route path={TMU_ROOT} element={<CashLoanHomePage />} />
         <Route path={`${TMU_ROOT}/portal`} element={<PortalLayout />}>
           <Route index element={<BorrowerPortalPage />} />
           <Route path="login" element={<BorrowerLoginPage />} />
           <Route path="register" element={<BorrowerRegisterPage />} />
           <Route path="apply" element={<BorrowerApplyPage />} />
+          <Route path="account" element={<BorrowerAccountPage />} />
         </Route>
         <Route path="/tmu" element={<Navigate to={TMU_ROOT} replace />} />
         <Route path="/tmu-cashloan" element={<Navigate to={TMU_ROOT} replace />} />
@@ -54,6 +58,7 @@ function App() {
           <Route path="applicants" element={<ApplicantsPage />} />
           <Route path="applicants/new" element={<NewApplicantPage />} />
           <Route path="applicants/:id" element={<ApplicantDetailPage />} />
+          <Route path="applications/:id" element={<ApplicationDetailPage />} />
           <Route path="users" element={<UsersPage />} />
           <Route path="tenants" element={<TenantsPage />} />
           <Route path="reports" element={<ReportsPage />} />
@@ -62,6 +67,7 @@ function App() {
           <Route path="arrears" element={<ArrearsPage />} />
           <Route path="policy-params" element={<PolicyParamsPage />} />
           <Route path="pilot-guardrails" element={<PilotGuardrailsPage />} />
+          <Route path="account" element={<AccountPage />} />
         </Route>
         
         {/* Nexora Systems Flagship Homepage */}

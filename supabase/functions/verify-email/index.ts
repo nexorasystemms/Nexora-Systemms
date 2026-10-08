@@ -45,7 +45,7 @@ serve(async (req) => {
 
         // Generate new verification code
         const verificationCode = generateVerificationCode()
-        const expiresAt = new Date(Date.now() + 10 * 60 * 1000) // 10 minutes
+        const expiresAt = new Date(Date.now() + 3 * 60 * 1000) // 3 minutes
 
         // Store verification code in database
         const { error: insertError } = await supabase
@@ -199,7 +199,7 @@ serve(async (req) => {
 
         // Generate and send new code
         const newCode = generateVerificationCode()
-        const newExpiresAt = new Date(Date.now() + 10 * 60 * 1000)
+        const newExpiresAt = new Date(Date.now() + 3 * 60 * 1000)
 
         const { error: newInsertError } = await supabase
           .from('email_verifications')
@@ -417,7 +417,7 @@ function getEmailTemplate(code: string, type: string): string {
                 </div>
                 
                 <div class="warning">
-                    <strong>Important:</strong> This code will expire in 10 minutes. ${isReset ? 'If you didn\'t request a password reset, please ignore this email.' : 'If you didn\'t request this verification, please contact our support team.'}
+                    <strong>Important:</strong> This code will expire in 3 minutes. ${isReset ? 'If you didn\'t request a password reset, please ignore this email.' : 'If you didn\'t request this verification, please contact our support team.'}
                 </div>
             </div>
             

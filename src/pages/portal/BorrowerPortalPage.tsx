@@ -6,6 +6,7 @@ import BorrowerDocumentsCard from "./BorrowerDocumentsCard";
 import AgreementCard from "./AgreementCard";
 import RepaymentScheduleCard from "./RepaymentScheduleCard";
 import { tmuPortal } from "../../lib/tenants";
+import { loanProductLabel } from "../../lib/loan-products";
 import WelcomeMessage from "./WelcomeMessage";
 
 export default function BorrowerPortalPage() {
@@ -168,7 +169,7 @@ export default function BorrowerPortalPage() {
             </Link>
           )}
           <span className="px-space-md py-1.5 rounded-full text-[12px] font-semibold bg-primary-container text-on-primary shadow-sm">
-            Term: {currentApp.term_months} {currentApp.term_months === 1 ? "month" : "months"} ({currentApp.product_type === "once_off" ? "Once-off Payday" : "Monthly Instalments"})
+            Term: {currentApp.term_months} {currentApp.term_months === 1 ? "month" : "months"} ({loanProductLabel(currentApp.loan_product, currentApp.product_type)})
           </span>
         </div>
       </div>
@@ -179,6 +180,7 @@ export default function BorrowerPortalPage() {
         amountRequested={Number(currentApp.amount_requested)}
         approvedAmount={latestDecision?.amount_approved}
         declineReasonCode={latestDecision?.reason_code}
+        declineReasonNotes={latestDecision?.notes}
         arrearsDaysPastDue={openArrears?.days_past_due}
         arrearsPenalty={openArrears?.penalty_charged}
       />

@@ -156,6 +156,69 @@
   --s-headline-font: var(--font-hanken-grotesk);
 }
 
+/* TMU Investments tenant — colors from https://tmudev.masimbi.com/ (gold, green, navy).
+   Scoped so Nexora house and staff admin keep their own systems. */
+[data-surface="tmu"] {
+  --s-primary: #edb50c;
+  --s-on-primary: #111111;
+  --s-primary-container: #c7980a;
+  --s-on-primary-container: #111111;
+  --s-primary-fixed: #ffe9a3;
+  --s-primary-fixed-dim: #edb50c;
+  --s-on-primary-fixed: #3d2e00;
+  --s-on-primary-fixed-variant: #8a6a00;
+
+  --s-secondary: #168845;
+  --s-on-secondary: #ffffff;
+  --s-secondary-container: #d1e7dd;
+  --s-on-secondary-container: #0d5c2e;
+  --s-secondary-fixed: #d1e7dd;
+  --s-secondary-fixed-dim: #a7b9b1;
+  --s-on-secondary-fixed: #062814;
+  --s-on-secondary-fixed-variant: #0d5c2e;
+
+  --s-tertiary: #031d33;
+  --s-on-tertiary: #ffffff;
+  --s-tertiary-container: #51782d;
+  --s-on-tertiary-container: #ffffff;
+  --s-tertiary-fixed: #c5d4a8;
+  --s-tertiary-fixed-dim: #51782d;
+  --s-on-tertiary-fixed: #031d33;
+  --s-on-tertiary-fixed-variant: #2f4a18;
+
+  --s-error: #ba1a1a;
+  --s-on-error: #ffffff;
+  --s-error-container: #ffdad6;
+  --s-on-error-container: #93000a;
+
+  --s-background: #ffffff;
+  --s-on-background: #111111;
+  --s-surface: #f7f7f7;
+  --s-on-surface: #111111;
+  --s-surface-variant: #d1e7dd;
+  --s-on-surface-variant: #555555;
+  --s-outline: #c9c9c9;
+  --s-outline-variant: #e5e5e5;
+
+  --s-surface-bright: #ffffff;
+  --s-surface-dim: #e8eee9;
+  --s-surface-container-lowest: #ffffff;
+  --s-surface-container-low: #f7f7f7;
+  --s-surface-container: #e8f3ec;
+  --s-surface-container-high: #d1e7dd;
+  --s-surface-container-highest: #c5ddd0;
+  --s-inverse-surface: #252525;
+  --s-inverse-on-surface: #f7f7f7;
+  --s-inverse-primary: #edb50c;
+
+  --s-radius-sm: 0.25rem;
+  --s-radius-lg: 0.375rem;
+  --s-radius-xl: 0.5rem;
+  --s-radius-full: 9999px;
+
+  --s-headline-font: "Open Sans", ui-sans-serif, system-ui, sans-serif;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -528,6 +591,224 @@ body {
 
 /* Prevent any overflowing element from creating a horizontal scrollbar
    at the document level. Overflow on individual sections is still fine. */
+[data-surface="tmu"] {
+  font-family: "Open Sans", ui-sans-serif, system-ui, sans-serif;
+}
+[data-surface="tmu"] .tmu-display {
+  font-family: "Open Sans", ui-sans-serif, system-ui, sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+[data-surface="tmu"] .tmu-quote-row:nth-child(odd) {
+  background: #d1e7dd;
+}
+[data-surface="tmu"] .tmu-quote-row:nth-child(even) {
+  background: #e8f3ec;
+}
+
+@keyframes tmu-kenburns {
+  0% { transform: scale(1) translate(0, 0); }
+  100% { transform: scale(1.08) translate(-1.5%, -1%); }
+}
+@keyframes tmu-orb-drift {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.45; }
+  50% { transform: translate(18px, -22px) scale(1.15); opacity: 0.75; }
+}
+@keyframes tmu-gold-shimmer {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+@keyframes tmu-quote-flash {
+  0% { color: #edb50c; transform: scale(1.06); }
+  100% { color: inherit; transform: scale(1); }
+}
+@keyframes tmu-bar-glide {
+  0% { transform: scaleX(0.35); }
+  50% { transform: scaleX(1); }
+  100% { transform: scaleX(0.35); }
+}
+
+[data-surface="tmu"] .tmu-hero-kenburns {
+  animation: tmu-kenburns 22s ease-in-out alternate infinite;
+  will-change: transform;
+}
+[data-surface="tmu"] .tmu-hero-overlay {
+  background:
+    linear-gradient(105deg, rgba(3, 29, 51, 0.88) 0%, rgba(22, 136, 69, 0.55) 55%, rgba(3, 29, 51, 0.72) 100%),
+    linear-gradient(180deg, rgba(3, 29, 51, 0.15) 0%, rgba(3, 29, 51, 0.55) 100%);
+}
+[data-surface="tmu"] .tmu-orb {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(2px);
+  pointer-events: none;
+  animation: tmu-orb-drift 7s ease-in-out infinite;
+}
+[data-surface="tmu"] .tmu-gold-shimmer {
+  background: linear-gradient(90deg, #edb50c 0%, #fff4c2 40%, #edb50c 70%, #c7980a 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: tmu-gold-shimmer 3.2s linear infinite;
+}
+[data-surface="tmu"] .tmu-gold-rule {
+  height: 3px;
+  width: 72px;
+  border-radius: 9999px;
+  background: #edb50c;
+  transform-origin: left center;
+  animation: tmu-bar-glide 3.6s ease-in-out infinite;
+}
+[data-surface="tmu"] .tmu-btn {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  letter-spacing: 0.04em;
+  transition:
+    transform 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+    filter 0.28s;
+}
+[data-surface="tmu"] .tmu-btn > span {
+  position: relative;
+  z-index: 1;
+}
+[data-surface="tmu"] .tmu-btn::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 28%, rgba(255, 255, 255, 0.38) 48%, transparent 68%);
+  transform: translateX(-130%);
+  transition: transform 0.55s ease;
+  pointer-events: none;
+}
+[data-surface="tmu"] .tmu-btn:hover::after,
+[data-surface="tmu"] .tmu-btn:focus-visible::after {
+  transform: translateX(130%);
+}
+[data-surface="tmu"] .tmu-btn:hover,
+[data-surface="tmu"] .tmu-btn:focus-visible {
+  transform: translateY(-2px);
+}
+[data-surface="tmu"] .tmu-btn:active {
+  transform: translateY(0) scale(0.985);
+}
+[data-surface="tmu"] .tmu-btn-olive {
+  background: #51782d;
+  color: #fff;
+  box-shadow: 0 8px 22px rgba(81, 120, 45, 0.32);
+}
+[data-surface="tmu"] .tmu-btn-olive:hover,
+[data-surface="tmu"] .tmu-btn-olive:focus-visible {
+  box-shadow: 0 14px 28px rgba(81, 120, 45, 0.42);
+  filter: brightness(1.06);
+}
+[data-surface="tmu"] .tmu-btn-navy {
+  background: #031d33;
+  color: #fff;
+  box-shadow: 0 8px 22px rgba(3, 29, 51, 0.35);
+}
+[data-surface="tmu"] .tmu-btn-navy:hover,
+[data-surface="tmu"] .tmu-btn-navy:focus-visible {
+  box-shadow: 0 14px 30px rgba(3, 29, 51, 0.48), 0 0 0 2px #edb50c;
+  filter: brightness(1.08);
+}
+[data-surface="tmu"] .tmu-btn-gold {
+  background: #edb50c;
+  color: #111;
+  box-shadow: 0 8px 22px rgba(237, 181, 12, 0.38);
+}
+[data-surface="tmu"] .tmu-btn-gold:hover,
+[data-surface="tmu"] .tmu-btn-gold:focus-visible {
+  box-shadow: 0 14px 30px rgba(237, 181, 12, 0.5);
+}
+[data-surface="tmu"] .tmu-menu-btn {
+  box-shadow: 0 4px 14px rgba(237, 181, 12, 0.4);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+[data-surface="tmu"] .tmu-menu-btn:hover {
+  transform: scale(1.06);
+  box-shadow: 0 8px 20px rgba(237, 181, 12, 0.55);
+}
+[data-surface="tmu"] .tmu-nav-link {
+  position: relative;
+  transition: color 0.2s ease;
+}
+[data-surface="tmu"] .tmu-nav-link::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -6px;
+  height: 2px;
+  width: 0;
+  background: #edb50c;
+  border-radius: 1px;
+  transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+[data-surface="tmu"] .tmu-nav-link:hover::after,
+[data-surface="tmu"] .tmu-nav-link.is-active::after {
+  width: 100%;
+}
+[data-surface="tmu"] .tmu-quote-flash {
+  animation: tmu-quote-flash 0.45s ease;
+  font-variant-numeric: tabular-nums;
+}
+[data-surface="tmu"] .tmu-facility-card {
+  position: relative;
+  overflow: hidden;
+  transition:
+    transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.3s ease;
+}
+[data-surface="tmu"] .tmu-facility-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 4px;
+  width: 40%;
+  background: #edb50c;
+  transition: width 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+[data-surface="tmu"] .tmu-facility-card:hover {
+  transform: translateY(-8px);
+  border-color: #edb50c;
+  box-shadow: 0 18px 36px rgba(3, 29, 51, 0.12);
+}
+[data-surface="tmu"] .tmu-facility-card:hover::before {
+  width: 100%;
+}
+[data-surface="tmu"] .tmu-facility-card .tmu-apply-arrow {
+  display: inline-block;
+  transition: transform 0.25s ease, color 0.25s ease;
+}
+[data-surface="tmu"] .tmu-facility-card:hover .tmu-apply-arrow {
+  transform: translateX(6px);
+  color: #edb50c;
+}
+[data-surface="tmu"] .tmu-reveal {
+  opacity: 0;
+  transform: translateY(22px);
+  transition:
+    opacity 0.65s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+}
+[data-surface="tmu"] .tmu-reveal.visible {
+  opacity: 1;
+  transform: none;
+}
+[data-surface="tmu"] .tmu-reveal.delay-100 { transition-delay: 100ms; }
+[data-surface="tmu"] .tmu-reveal.delay-200 { transition-delay: 200ms; }
+[data-surface="tmu"] .tmu-reveal.delay-300 { transition-delay: 300ms; }
+[data-surface="tmu"] .tmu-chip {
+  transition: transform 0.25s ease, background 0.25s ease;
+}
+[data-surface="tmu"] .tmu-chip:hover {
+  transform: translateY(-2px);
+}
+
 html, body {
   overflow-x: hidden;
   /* Improve text rendering on mobile */
@@ -554,9 +835,18 @@ img, video {
   .animate-glow-pulse,
   .animate-gradient,
   .animate-ticker,
-  .text-shimmer {
+  .text-shimmer,
+  [data-surface="tmu"] .tmu-hero-kenburns,
+  [data-surface="tmu"] .tmu-orb,
+  [data-surface="tmu"] .tmu-gold-shimmer,
+  [data-surface="tmu"] .tmu-gold-rule,
+  [data-surface="tmu"] .tmu-quote-flash {
     animation: none !important;
     transition: none !important;
+  }
+  [data-surface="tmu"] .tmu-reveal {
+    opacity: 1 !important;
+    transform: none !important;
   }
 
   /* Tailwind built-in animate-* utilities */

@@ -64,7 +64,7 @@ export default function LoanCalculator() {
         <div className="grid grid-cols-3 gap-1 p-1 rounded-xl bg-surface-container-low">
           {(
             [
-              [1, "1 Mo. (Payday)"],
+              [1, "1 Mo. (Once off)"],
               [3, "3 Months"],
               [6, "6 Months"],
             ] as const

@@ -1026,3 +1026,220 @@ $$;
 -- To run automatically every day at 01:00 AM, enable pg_cron in Supabase (Database -> Extensions)
 -- and uncomment the line below:
 -- select cron.schedule('daily-arrears-job', '0 1 * * *', 'select public.raise_arrears_events();');
+
+-- 0020_borrower_self_register.sql
+create or replace function public.handle_new_auth_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_tenant_id uuid;
+  v_full_name text;
+  v_mobile text;
+  v_id_type text;
+  v_id_number text;
+  v_id_hash text;
+  v_id_token text;
+  v_applicant_id uuid;
+begin
+  select id into v_tenant_id from public.tenants where slug = 'tmu-cashloan' limit 1;
+
+  v_full_name := nullif(trim(coalesce(new.raw_user_meta_data->>'full_name', '')), '');
+  v_mobile := nullif(trim(coalesce(new.raw_user_meta_data->>'mobile', '')), '');
+  v_id_type := coalesce(nullif(trim(new.raw_user_meta_data->>'id_type'), ''), 'personal_id');
+  v_id_number := nullif(trim(coalesce(new.raw_user_meta_data->>'id_number', '')), '');
+
+  if v_id_type not in ('personal_id', 'passport') then
+    v_id_type := 'personal_id';
+  end if;
+
+  insert into public.users (
+    id, tenant_id, email, full_name, phone, platform_role, role, status
+  ) values (
+    new.id,
+    v_tenant_id,
+    new.email,
+    coalesce(v_full_name, split_part(new.email, '@', 1)),
+    v_mobile,
+    'tenant_user',
+    'borrower',
+    'active'
+  )
+  on conflict (id) do update set
+    email = excluded.email,
+    full_name = excluded.full_name,
+    phone = coalesce(excluded.phone, public.users.phone),
+    status = 'active';
+
+  if v_tenant_id is not null and v_id_number is not null then
+    begin
+      v_id_hash := public.hash_secure_value(v_id_number);
+      select id into v_applicant_id
+      from public.applicants
+      where tenant_id = v_tenant_id and id_number_hash = v_id_hash
+      limit 1;
+
+      if v_applicant_id is null then
+        v_id_token := public.tokenize_secure_value(v_tenant_id, 'id_number', v_id_number);
+        v_applicant_id := gen_random_uuid();
+        insert into public.applicants (
+          id, tenant_id, full_name, id_type, id_number_token, id_number_hash,
+          mobile, email, residential_address, marital_status, dependants_count,
+          next_of_kin_name, next_of_kin_mobile, created_by
+        ) values (
+          v_applicant_id,
+          v_tenant_id,
+          coalesce(v_full_name, split_part(new.email, '@', 1)),
+          v_id_type,
+          coalesce(v_id_token, 'tok_pending'),
+          coalesce(v_id_hash, encode(gen_random_bytes(16), 'hex')),
+          coalesce(v_mobile, '0000000000'),
+          new.email,
+          'To be completed',
+          'single',
+          0,
+          'To be completed',
+          '0000000000',
+          new.id
+        );
+      end if;
+
+      update public.users
+      set applicant_id = v_applicant_id
+      where id = new.id;
+    exception when others then
+      raise notice 'borrower applicant create skipped: %', sqlerrm;
+    end;
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute procedure public.handle_new_auth_user();
+
+-- 0021_email_verification_rpc.sql
+create table if not exists public.email_verifications (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  email text not null,
+  code text not null,
+  type text not null default 'registration',
+  expires_at timestamptz not null,
+  used_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+alter table public.email_verifications add column if not exists used_at timestamptz;
+
+create index if not exists idx_email_verifications_lookup
+  on public.email_verifications (user_id, code, type);
+
+alter table public.email_verifications enable row level security;
+
+create or replace function public.verify_email_code(p_user_id uuid, p_code text)
+returns json
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_id uuid;
+  v_code text;
+begin
+  v_code := regexp_replace(coalesce(p_code, ''), '[^0-9]', '', 'g');
+
+  if p_user_id is null or length(v_code) < 6 then
+    return json_build_object('success', false, 'error', 'Invalid verification code');
+  end if;
+
+  select id into v_id
+  from public.email_verifications
+  where user_id = p_user_id
+    and regexp_replace(code, '[^0-9]', '', 'g') = v_code
+    and used_at is null
+    and expires_at > now()
+  order by created_at desc
+  limit 1;
+
+  if v_id is null then
+    return json_build_object('success', false, 'error', 'Invalid or expired verification code');
+  end if;
+
+  update public.email_verifications
+  set used_at = now()
+  where id = v_id;
+
+  update public.users
+  set status = 'active', updated_at = now()
+  where id = p_user_id;
+
+  begin
+    update auth.users
+    set email_confirmed_at = coalesce(email_confirmed_at, now()),
+        updated_at = now()
+    where id = p_user_id;
+  exception when others then
+    null;
+  end;
+
+  return json_build_object('success', true, 'message', 'Email verified successfully');
+end;
+$$;
+
+create or replace function public.issue_email_verification_code(
+  p_user_id uuid,
+  p_email text,
+  p_type text default 'registration'
+)
+returns json
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_code text;
+  v_expires timestamptz;
+begin
+  if p_user_id is null or p_email is null then
+    return json_build_object('success', false, 'error', 'Email and user are required');
+  end if;
+
+  v_code := lpad(floor(10000000 + random() * 90000000)::int::text, 8, '0');
+  v_expires := now() + interval '3 minutes';
+
+  insert into public.email_verifications (user_id, email, code, type, expires_at)
+  values (p_user_id, p_email, v_code, coalesce(p_type, 'registration'), v_expires);
+
+  return json_build_object('success', true, 'expiresAt', v_expires);
+end;
+$$;
+
+revoke all on function public.verify_email_code(uuid, text) from public;
+revoke all on function public.issue_email_verification_code(uuid, text, text) from public;
+grant execute on function public.verify_email_code(uuid, text) to anon, authenticated;
+grant execute on function public.issue_email_verification_code(uuid, text, text) to anon, authenticated;
+
+-- 0022_loan_products.sql
+alter table public.applications
+  add column if not exists loan_product text;
+
+alter table public.applications
+  drop constraint if exists applications_loan_product_check;
+
+alter table public.applications
+  add constraint applications_loan_product_check
+  check (loan_product is null or loan_product in (
+    'personal_no_payslip',
+    'first_time_credit_check',
+    'tender_purchase_order'
+  ));
+
+-- 0023_documents_and_decisions.sql is in supabase/migrations/0023_documents_and_decisions.sql
+-- 0024_tmu_loan_product_types.sql is in supabase/migrations/0024_tmu_loan_product_types.sql
+

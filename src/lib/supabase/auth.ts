@@ -87,94 +87,75 @@ export async function registerBorrower(data: {
   password: string
 }): Promise<AuthResponse> {
   try {
-    // Check if applicant exists with this ID
-    const { data: existingApplicant } = await supabase()
-      .from('applicants')
-      .select('id')
-      .eq('id_number', data.id_number)
-      .single()
-
-    // Create auth user
     const { data: authData, error: authError } = await supabase().auth.signUp({
       email: data.email,
       password: data.password,
       options: {
-        emailRedirectTo: undefined // Disable default email confirmation
-      }
+        data: {
+          full_name: data.full_name,
+          mobile: data.mobile,
+          id_type: data.id_type,
+          id_number: data.id_number,
+        },
+        emailRedirectTo: `${window.location.origin}/tmu-investments/portal`,
+      },
     })
 
     if (authError) {
-      return { success: false, error: authError.message }
+      const already = /already registered|already been registered|user already exists/i.test(authError.message)
+      if (!already) {
+        return { success: false, error: authError.message }
+      }
+      const { data: signedIn, error: signInError } = await supabase().auth.signInWithPassword({
+        email: data.email,
+        password: data.password,
+      })
+      if (signInError || !signedIn.user) {
+        return { success: false, error: authError.message }
+      }
+      await sendVerificationCode(data.email, signedIn.user.id, 'registration').catch((err) => {
+        console.error('Verification email send failed:', err)
+      })
+      return {
+        success: true,
+        tempUserId: signedIn.user.id,
+        requiresVerification: true,
+      }
     }
 
     if (!authData.user) {
       return { success: false, error: 'Failed to create user' }
     }
 
-    // Create user profile
-    const { error: profileError } = await supabase()
-      .from('users')
-      .insert({
-        id: authData.user.id,
-        email: data.email,
-        full_name: data.full_name,
-        role: 'borrower',
-        status: 'inactive' // Inactive until email verified
+    // Confirm-email is on: Auth already sent the OTP. Do not issue a second code.
+    // Confirm-email is off: session is present, so send our own code.
+    if (authData.session) {
+      await sendVerificationCode(data.email, authData.user.id, 'registration').catch((err) => {
+        console.error('Verification email send failed:', err)
       })
-
-    if (profileError) {
-      console.error('Profile creation error:', profileError)
     }
-
-    // Create or link applicant record
-    if (existingApplicant) {
-      // Link existing applicant to user
-      await supabase()
-        .from('applicants')
-        .update({ 
-          user_id: authData.user.id,
-          email: data.email,
-          full_name: data.full_name,
-          mobile: data.mobile
-        })
-        .eq('id', existingApplicant.id)
-    } else {
-      // Create new applicant
-      await supabase()
-        .from('applicants')
-        .insert({
-          user_id: authData.user.id,
-          full_name: data.full_name,
-          id_type: data.id_type,
-          id_number: data.id_number,
-          mobile: data.mobile,
-          email: data.email,
-          status: 'draft'
-        })
-    }
-
-    // Generate verification code using Edge Function
-    const verificationResult = await sendVerificationCode(data.email, authData.user.id, 'registration')
-    
-    if (!verificationResult.success) {
-      return { success: false, error: verificationResult.error || 'Failed to send verification code' }
-    }
-
     return {
       success: true,
       tempUserId: authData.user.id,
-      requiresVerification: true
+      requiresVerification: true,
     }
   } catch (error) {
     console.error('Registration error:', error)
+    const msg = error instanceof Error ? error.message : ''
+    if (/failed to fetch|networkerror|load failed/i.test(msg)) {
+      return {
+        success: false,
+        error: 'Could not reach the server. Check your internet connection and try again.',
+      }
+    }
     return { success: false, error: 'An unexpected error occurred' }
   }
 }
 
 // Verify borrower email
-export async function verifyBorrowerEmail(tempUserId: string, code: string): Promise<AuthResponse> {
+export async function verifyBorrowerEmail(tempUserId: string, code: string, email?: string): Promise<AuthResponse> {
   try {
-    const result = await verifyCode(tempUserId, code)
+    const result = await verifyCode(tempUserId, code, email)
     
     if (result.success) {
       return { success: true }
@@ -187,28 +168,16 @@ export async function verifyBorrowerEmail(tempUserId: string, code: string): Pro
   }
 }
 
-// Send password reset code
+function digitsOnly(code: string): string {
+  return String(code || '').replace(/\D/g, '')
+}
+
 export async function sendPasswordResetCode(email: string): Promise<AuthResponse> {
   try {
-    // Check if user exists
-    const { data: profile, error: profileError } = await supabase()
-      .from('users')
-      .select('id')
-      .eq('email', email)
-      .single()
-
-    if (profileError || !profile) {
-      // Don't reveal if email exists for security
-      return { success: true }
+    const { error } = await supabase().auth.resetPasswordForEmail(email.trim().toLowerCase())
+    if (error && /rate|too many|seconds/i.test(error.message)) {
+      return { success: false, error: error.message }
     }
-
-    // Generate password reset code using Edge Function
-    const verificationResult = await sendVerificationCode(email, profile.id, 'password_reset')
-    
-    if (!verificationResult.success) {
-      return { success: false, error: verificationResult.error || 'Failed to send reset code' }
-    }
-
     return { success: true }
   } catch (error) {
     console.error('Password reset error:', error)
@@ -216,40 +185,104 @@ export async function sendPasswordResetCode(email: string): Promise<AuthResponse
   }
 }
 
-// Verify password reset code and reset password
-export async function resetPassword(email: string, code: string, newPassword: string): Promise<AuthResponse> {
+export async function verifyPasswordResetCode(email: string, code: string): Promise<AuthResponse> {
   try {
-    // Find user by email
-    const { data: user, error: userError } = await supabase()
-      .from('users')
-      .select('id')
-      .eq('email', email)
-      .single()
-
-    if (userError || !user) {
-      return { success: false, error: 'User not found' }
+    const { error } = await supabase().auth.verifyOtp({
+      email: email.trim().toLowerCase(),
+      token: digitsOnly(code),
+      type: 'recovery',
+    })
+    if (error) {
+      return { success: false, error: error.message || 'Invalid or expired verification code' }
     }
-
-    // Verify the reset code first
-    const verifyResult = await verifyCode(user.id, code)
-    
-    if (!verifyResult.success) {
-      return { success: false, error: verifyResult.error || 'Invalid or expired reset code' }
-    }
-
-    // Update password using Supabase Admin API
-    const { error: updateError } = await supabase().auth.admin.updateUserById(
-      user.id,
-      { password: newPassword }
-    )
-
-    if (updateError) {
-      return { success: false, error: 'Failed to update password' }
-    }
-
     return { success: true }
   } catch (error) {
-    console.error('Password reset error:', error)
+    console.error('Password reset verify error:', error)
+    return { success: false, error: 'An unexpected error occurred' }
+  }
+}
+
+export async function completePasswordReset(newPassword: string): Promise<AuthResponse> {
+  try {
+    if (newPassword.length < 6) {
+      return { success: false, error: 'Password must be at least 6 characters.' }
+    }
+    const { error } = await supabase().auth.updateUser({ password: newPassword })
+    if (error) {
+      return { success: false, error: error.message || 'Failed to update password' }
+    }
+    await supabase().auth.signOut()
+    return { success: true }
+  } catch (error) {
+    console.error('Password reset complete error:', error)
+    return { success: false, error: 'An unexpected error occurred' }
+  }
+}
+
+export async function requestEmailChange(newEmail: string): Promise<AuthResponse> {
+  try {
+    const { data: { user } } = await supabase().auth.getUser()
+    if (!user) {
+      return { success: false, error: 'Sign in to change your email address.' }
+    }
+    const email = newEmail.trim().toLowerCase()
+    if (!email || !email.includes('@')) {
+      return { success: false, error: 'Enter a valid email address.' }
+    }
+    if (user.email && user.email.toLowerCase() === email) {
+      return { success: false, error: 'Enter a different email address.' }
+    }
+    const { error } = await supabase().auth.updateUser({ email })
+    if (error) {
+      return { success: false, error: error.message }
+    }
+    return { success: true }
+  } catch (error) {
+    console.error('Email change request error:', error)
+    return { success: false, error: 'An unexpected error occurred' }
+  }
+}
+
+export async function verifyEmailChange(newEmail: string, code: string): Promise<AuthResponse> {
+  try {
+    const email = newEmail.trim().toLowerCase()
+    const { data, error } = await supabase().auth.verifyOtp({
+      email,
+      token: digitsOnly(code),
+      type: 'email_change',
+    })
+    if (error) {
+      return { success: false, error: error.message || 'Invalid or expired verification code' }
+    }
+    const userId = data.user?.id
+    if (userId) {
+      await supabase().from('users').update({ email }).eq('id', userId)
+      const { data: profile } = await supabase().from('users').select('applicant_id').eq('id', userId).maybeSingle()
+      if (profile?.applicant_id) {
+        await supabase().from('applicants').update({ email }).eq('id', profile.applicant_id)
+      }
+    }
+    await supabase().auth.signOut()
+    return { success: true }
+  } catch (error) {
+    console.error('Email change verify error:', error)
+    return { success: false, error: 'An unexpected error occurred' }
+  }
+}
+
+export async function resendEmailChangeCode(newEmail: string): Promise<AuthResponse> {
+  try {
+    const email = newEmail.trim().toLowerCase()
+    const { error } = await supabase().auth.resend({ type: 'email_change', email })
+    if (error) {
+      const retry = await supabase().auth.updateUser({ email })
+      if (retry.error) {
+        return { success: false, error: retry.error.message }
+      }
+    }
+    return { success: true }
+  } catch (error) {
+    console.error('Email change resend error:', error)
     return { success: false, error: 'An unexpected error occurred' }
   }
 }

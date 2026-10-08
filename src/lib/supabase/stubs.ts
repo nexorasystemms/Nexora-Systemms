@@ -1,20 +1,13 @@
 // Stub functions — replace with real implementations as features are built out.
 
 // Portal action stubs
-export async function borrowerUploadDocument(_formData: FormData) {
-  console.warn('borrowerUploadDocument: Not yet implemented');
-  return { success: false, error: 'Not implemented' };
-}
+export { uploadDocument as borrowerUploadDocument, submitBorrowerApplication, openDocument } from './applications'
 
 export async function borrowerAcceptAgreement(_applicationId: string, _agreementId: string) {
   console.warn('borrowerAcceptAgreement: Not yet implemented');
   return { success: false, error: 'Not implemented' };
 }
 
-export async function submitBorrowerApplication(_formData: FormData) {
-  console.warn('submitBorrowerApplication: Not yet implemented');
-  return { success: false, error: 'Not implemented' };
-}
 
 // Admin action stubs
 export async function inviteStaff(_formData: FormData) {

@@ -3,7 +3,7 @@ import { Link, Outlet, useLocation } from "react-router-dom";
 import { createClient } from "@/lib/supabase/client";
 import SignOutButton from "@/pages/portal/SignOutButton";
 import { usePageTitle } from "@/lib/usePageTitle";
-import { TMU_ROOT, tmuAssets, tmuPortal } from "@/lib/tenants";
+import { TMU_ROOT, tmuAssets, tmuContact, tmuPortal } from "@/lib/tenants";
 
 // Routes that render without the authenticated portal chrome
 const UNAUTHENTICATED_PATHS: string[] = [tmuPortal.login, tmuPortal.register];
@@ -47,12 +47,12 @@ export default function PortalLayout() {
 
   // Unauthenticated pages: no chrome
   if (isUnauthenticated) {
-    return <div data-surface="portal"><Outlet /></div>;
+    return <div data-surface="tmu"><Outlet /></div>;
   }
 
   if (loading) {
     return (
-      <div data-surface="portal" className="min-h-screen flex items-center justify-center bg-background">
+      <div data-surface="tmu" className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto" />
           <p className="mt-4 text-on-surface-variant">Loading portal…</p>
@@ -64,27 +64,18 @@ export default function PortalLayout() {
   const displayName = applicant?.full_name ?? profile?.full_name ?? user?.email ?? "";
 
   return (
-    <div data-surface="portal" className="min-h-screen bg-background flex flex-col">
+    <div data-surface="tmu" className="min-h-screen bg-background flex flex-col">
 
-      {/* ── Fixed header ── */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-surface-container-lowest/95 backdrop-blur-xl shadow-sm">
+      <div className="fixed top-0 left-0 right-0 z-50">
+      <header className="bg-surface-container-lowest shadow-sm border-b border-outline-variant">
         <div className="h-16 sm:h-20 max-w-5xl mx-auto px-4 sm:px-6 flex items-center justify-between gap-4">
 
-          {/* Left: logo + brand */}
           <Link to={tmuPortal.home} className="flex items-center gap-3 min-w-0 shrink-0 h-12 overflow-hidden">
             <img
-              src={tmuAssets.horizontal}
-              alt="Nexora Systems"
-              className="block h-9 w-[160px] sm:h-10 sm:w-[184px] object-contain object-left shrink-0"
+              src={tmuAssets.logo}
+              alt="TMU Capital Pty Ltd"
+              className="block h-10 w-[180px] sm:h-11 sm:w-[210px] object-contain object-left shrink-0"
             />
-            <div className="hidden sm:flex flex-col min-w-0">
-              <span className="bg-surface-container-high text-primary px-2 py-0.5 rounded-full text-[11px] tracking-wider uppercase font-semibold w-fit whitespace-nowrap">
-                TMU CashLoan Portal
-              </span>
-              <span className="text-[11px] text-on-surface-variant mt-0.5 whitespace-nowrap">
-                NAMFISA Reg. 25/11/1138 · Windhoek
-              </span>
-            </div>
           </Link>
 
           {/* Right: desktop user info + sign-out */}
@@ -94,7 +85,9 @@ export default function PortalLayout() {
                 {/* User info — hidden on xs */}
                 <div className="hidden sm:flex flex-col text-right min-w-0">
                   <span className="text-sm font-semibold text-on-surface truncate max-w-[180px]">{displayName}</span>
-                  <span className="text-[12px] text-on-surface-variant truncate max-w-[180px]">{user.email}</span>
+                  <Link to={tmuPortal.account} className="text-[12px] text-on-surface-variant truncate max-w-[180px] hover:text-primary hover:underline">
+                    {user.email}
+                  </Link>
                 </div>
                 {/* Avatar */}
                 <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0">
@@ -142,6 +135,11 @@ export default function PortalLayout() {
                 <span className="material-symbols-outlined text-[18px] text-primary">add_circle</span>
                 Apply for a Loan
               </Link>
+              <Link to={tmuPortal.account}
+                className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-on-surface hover:bg-surface-container transition-colors">
+                <span className="material-symbols-outlined text-[18px] text-primary">mail</span>
+                Change email
+              </Link>
               <Link to={TMU_ROOT}
                 className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-on-surface hover:bg-surface-container transition-colors">
                 <span className="material-symbols-outlined text-[18px] text-secondary">home</span>
@@ -156,8 +154,8 @@ export default function PortalLayout() {
           </div>
         )}
       </header>
+      </div>
 
-      {/* ── Page content ── */}
       <main className="w-full pt-16 sm:pt-20 flex-1 bg-background">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-space-xl">
           <Outlet />
@@ -165,10 +163,10 @@ export default function PortalLayout() {
       </main>
 
       {/* ── Footer ── */}
-      <footer className="bg-surface-container-lowest border-t border-outline-variant/40 py-space-lg text-center text-[12px] text-on-surface-variant px-4">
+      <footer className="bg-inverse-surface text-[#acacac] py-space-lg text-center text-[12px] px-4">
         <div className="max-w-5xl mx-auto">
-          <p className="font-medium text-on-surface">TMU CashLoan CC — Registered Microlender (NAMFISA Reg. 25/11/1138)</p>
-          <p className="mt-1">Independence Avenue, Windhoek, Namibia · Powered by Nexora Systems</p>
+          <p className="font-medium text-white">TMU CashLoan CC — Registered Microlender (NAMFISA Reg. 25/11/1138)</p>
+          <p className="mt-1">{tmuContact.address} · Powered by Nexora Systems</p>
           <div className="mt-3 flex flex-wrap items-center justify-center gap-4 text-[11px]">
             <Link to={TMU_ROOT} className="hover:text-on-surface transition-colors">TMU Home</Link>
             <Link to={tmuPortal.login} className="hover:text-on-surface transition-colors">Sign In</Link>

@@ -11,6 +11,7 @@ export interface ApiResponse<T = any> {
   error?: string
   message?: string
   status?: string
+  applicationId?: string
 }
 
 // Applicant management
@@ -67,6 +68,7 @@ export interface CreateApplicationData {
   amount_requested: number
   term_months: number
   product_type: 'once_off' | 'instalment'
+  loan_product?: 'personal_no_payslip' | 'first_time_credit_check' | 'tender_purchase_order'
   next_pay_date?: string
   purpose_category?: string
   purpose_text?: string
@@ -90,7 +92,8 @@ export async function createApplication(data: CreateApplicationData): Promise<Ap
       p_referral_source: data.referral_source || null,
       p_has_prior_credit: data.has_prior_credit || null,
       p_created_by: data.created_by,
-      p_duplicate_override_reason: data.duplicate_override_reason || null
+      p_duplicate_override_reason: data.duplicate_override_reason || null,
+      p_loan_product: data.loan_product || null,
     })
 
     if (error) {
@@ -360,43 +363,58 @@ export async function recordDecision(
 }
 
 // Document management
+async function sha256Hex(file: File): Promise<string> {
+  const buffer = await file.arrayBuffer()
+  const digest = await crypto.subtle.digest('SHA-256', buffer)
+  return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('')
+}
+
 export async function uploadDocument(
   applicationId: string,
   file: File,
-  documentType: string
+  documentType: string,
+  tenantId?: string
 ): Promise<ApiResponse> {
   try {
-    // Generate file path
-    const timestamp = new Date().getTime()
-    const filePath = `applications/${applicationId}/${documentType}_${timestamp}.${file.name.split('.').pop()}`
-    
-    // Upload file to Supabase Storage
+    const { data: { user } } = await supabase().auth.getUser()
+    if (!user) return { success: false, error: 'Sign in to upload documents' }
+
+    let tenant = tenantId
+    if (!tenant) {
+      const { data: app } = await supabase().from('applications').select('tenant_id').eq('id', applicationId).maybeSingle()
+      tenant = app?.tenant_id
+    }
+    if (!tenant) return { success: false, error: 'Application not found' }
+
+    const ext = (file.name.split('.').pop() || 'bin').toLowerCase()
+    const filePath = `${tenant}/${applicationId}/${documentType}_${Date.now()}.${ext}`
+    const hash = await sha256Hex(file)
+
     const { error: uploadError } = await supabase().storage
       .from('documents')
-      .upload(filePath, file)
+      .upload(filePath, file, { contentType: file.type, upsert: false })
 
     if (uploadError) {
       return { success: false, error: uploadError.message }
     }
 
-    // Save document record
     const { data: docData, error: docError } = await supabase()
-      .from('application_documents')
+      .from('documents')
       .insert({
-        application_id: applicationId,
-        document_type: documentType,
-        filename: file.name,
+        tenant_id: tenant,
+        entity_type: 'application',
+        entity_id: applicationId,
+        doc_type: documentType,
         file_path: filePath,
-        file_size: file.size,
-        mime_type: file.type,
-        status: 'pending_review',
-        uploaded_at: new Date().toISOString()
+        sha256_hash: hash,
+        original_filename: file.name,
+        status: 'pending',
+        uploaded_by: user.id,
       })
       .select()
       .single()
 
     if (docError) {
-      // Clean up uploaded file if database insert fails
       await supabase().storage.from('documents').remove([filePath])
       return { success: false, error: docError.message }
     }
@@ -413,12 +431,14 @@ export async function reviewDocument(
   notes: string
 ): Promise<ApiResponse> {
   try {
+    const { data: { user } } = await supabase().auth.getUser()
     const { error } = await supabase()
-      .from('application_documents')
+      .from('documents')
       .update({
         status,
         review_notes: notes,
-        reviewed_at: new Date().toISOString()
+        reviewed_by: user?.id ?? null,
+        reviewed_at: new Date().toISOString(),
       })
       .eq('id', documentId)
 
@@ -430,4 +450,191 @@ export async function reviewDocument(
   } catch (error) {
     return { success: false, error: 'Failed to review document' }
   }
+}
+
+export async function openDocument(filePath: string): Promise<ApiResponse<{ signedUrl: string }>> {
+  const { data, error } = await supabase().storage.from('documents').createSignedUrl(filePath, 3600)
+  if (error || !data?.signedUrl) {
+    return { success: false, error: error?.message || 'Could not open document' }
+  }
+  return { success: true, data: { signedUrl: data.signedUrl } }
+}
+
+export async function recordStaffDecision(input: {
+  applicationId: string
+  outcome: 'approved' | 'approved_with_changes' | 'declined'
+  reasonCode: string
+  notes?: string
+  amountApproved?: number
+  termApproved?: number
+}): Promise<ApiResponse> {
+  const { data, error } = await supabase().rpc('record_staff_decision', {
+    p_application_id: input.applicationId,
+    p_outcome: input.outcome,
+    p_reason_code: input.reasonCode,
+    p_notes: input.notes || null,
+    p_amount_approved: input.amountApproved ?? null,
+    p_term_approved: input.termApproved ?? null,
+  })
+  if (error) return { success: false, error: error.message }
+  if (data?.success === false) return { success: false, error: data.error || 'Could not record decision' }
+  return { success: true, data }
+}
+
+export async function submitBorrowerApplication(formData: FormData): Promise<ApiResponse> {
+  const { data: { user } } = await supabase().auth.getUser()
+  if (!user) return { success: false, error: 'Sign in to submit an application' }
+
+  const { data: profile } = await supabase()
+    .from('users')
+    .select('id, tenant_id, applicant_id')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  if (!profile?.applicant_id || !profile.tenant_id) {
+    return { success: false, error: 'Complete registration before applying for a loan.' }
+  }
+
+  const loanProduct = String(formData.get('loan_product') || '')
+  const productType = (formData.get('product_type') as 'once_off' | 'instalment') || 'instalment'
+  const purposeBits = [
+    String(formData.get('purpose_text') || '').trim(),
+    formData.get('tender_reference') ? `Tender: ${formData.get('tender_reference')}` : '',
+    formData.get('business_name') ? `Business: ${formData.get('business_name')}` : '',
+    formData.get('security_description') ? `Security: ${formData.get('security_description')}` : '',
+  ].filter(Boolean)
+
+  const created = await createApplication({
+    tenant_id: profile.tenant_id,
+    applicant_id: profile.applicant_id,
+    amount_requested: Number(formData.get('amount_requested')),
+    term_months: Number(formData.get('term_months')),
+    product_type: productType,
+    loan_product: loanProduct as CreateApplicationData['loan_product'],
+    next_pay_date: (formData.get('next_pay_date') as string) || undefined,
+    purpose_category: (formData.get('purpose_category') as string) || undefined,
+    purpose_text: purposeBits.join('\n') || undefined,
+    referral_source: (formData.get('referral_source') as string) || undefined,
+    has_prior_credit: (formData.get('has_prior_credit') as CreateApplicationData['has_prior_credit']) || undefined,
+    created_by: user.id,
+  })
+
+  if (!created.success) {
+    return { success: false, error: created.error || created.message || 'Could not create application' }
+  }
+
+  const applicationId = created.applicationId || created.data?.applicationId
+  if (!applicationId) {
+    return { success: false, error: 'Application was created without an id' }
+  }
+
+  const employerName = String(formData.get('employer_name') || '').trim()
+  if (employerName) {
+    const payrollNote = formData.get('payroll_number')
+      ? `Payroll ${formData.get('payroll_employer_type') || ''}: ${formData.get('payroll_number')}`
+      : null
+    await supabase().from('employment').upsert({
+      tenant_id: profile.tenant_id,
+      application_id: applicationId,
+      employer_name: employerName,
+      employer_address: String(formData.get('employer_address') || '') || null,
+      occupation: String(formData.get('occupation') || '') || null,
+      monthly_net_salary: Number(formData.get('monthly_net_salary') || 0) || null,
+      employment_start_date: (formData.get('employment_start_date') as string) || null,
+      employer_phone: String(formData.get('employer_phone') || '') || null,
+      employer_contact: String(formData.get('employer_contact') || payrollNote || '') || null,
+      employer_email: String(formData.get('employer_email') || '') || null,
+    }, { onConflict: 'application_id' })
+  }
+
+  const incomeLines: Array<[string, number]> = [
+    ['gross_basic_salary', Number(formData.get('gross_salary') || 0)],
+    ['net_salary', Number(formData.get('net_salary') || formData.get('monthly_net_salary') || 0)],
+    ['spouse_net', Number(formData.get('spouse_net') || 0)],
+    ['other_income', Number(formData.get('other_income') || 0)],
+    ['total_expenditure', Number(formData.get('total_expenditure') || 0)],
+  ]
+  if (incomeLines.some(([, amount]) => amount > 0)) {
+    await supabase().from('income_expenditure').upsert(
+      incomeLines.map(([line_code, amount]) => ({
+        tenant_id: profile.tenant_id,
+        application_id: applicationId,
+        line_code,
+        amount,
+        source: 'declared',
+      })),
+      { onConflict: 'application_id,line_code' }
+    )
+  }
+
+  const priorLender = String(formData.get('prior_lender') || '').trim()
+  if (priorLender) {
+    await supabase().from('credit_history').insert({
+      tenant_id: profile.tenant_id,
+      application_id: applicationId,
+      lender_name: priorLender,
+      monthly_instalment: Number(formData.get('prior_instalment') || 0),
+      amount_outstanding: Number(formData.get('prior_outstanding') || 0) || null,
+      expected_repayment_date: (formData.get('prior_repay_date') as string) || null,
+    })
+  }
+
+  const bankName = String(formData.get('bank_name') || '').trim()
+  const accountNumber = String(formData.get('account_number') || '').trim()
+  if (bankName && accountNumber) {
+    let accountToken = accountNumber
+    try {
+      const { data: token } = await supabase().rpc('tokenize_secure_value', {
+        p_tenant_id: profile.tenant_id,
+        p_field_type: 'account_number',
+        p_plaintext: accountNumber,
+      })
+      if (token) accountToken = String(token)
+    } catch {
+      /* keep plaintext token fallback only if RPC is unavailable */
+    }
+    await supabase().from('bank_details').upsert({
+      tenant_id: profile.tenant_id,
+      application_id: applicationId,
+      bank_name: bankName,
+      account_name: String(formData.get('account_name') || 'Account holder'),
+      branch: String(formData.get('bank_branch') || '') || null,
+      account_number_token: accountToken,
+    }, { onConflict: 'application_id' })
+  }
+
+  const consentMap: Array<[string, string]> = [
+    ['consent_credit_assessment', 'credit_assessment'],
+    ['consent_bureau', 'bureau_enquiry_and_submission'],
+    ['consent_debt_collection', 'debt_collection_disclosure'],
+    ['consent_marketing', 'marketing'],
+    ['consent_payroll_deduction', 'cession_disclosure'],
+    ['consent_eft_mandate', 'eft_mandate'],
+  ]
+  for (const [field, consentType] of consentMap) {
+    if (formData.get(field) === 'on') {
+      await supabase().from('consents').insert({
+        tenant_id: profile.tenant_id,
+        applicant_id: profile.applicant_id,
+        application_id: applicationId,
+        consent_type: consentType,
+        granted: true,
+        channel: 'digital_form',
+        granted_at: new Date().toISOString(),
+        recorded_by: user.id,
+      })
+    }
+  }
+
+  for (const [key, value] of formData.entries()) {
+    if (!key.endsWith('_document') || !(value instanceof File) || value.size === 0) continue
+    const docType = key.replace(/_document$/, '')
+    const uploaded = await uploadDocument(applicationId, value, docType, profile.tenant_id)
+    if (!uploaded.success) {
+      return { success: false, error: uploaded.error || `Failed to upload ${docType}` }
+    }
+  }
+
+  await updateApplicationStatus(applicationId, 'submitted', user.id)
+  return { success: true, data: { applicationId } }
 }

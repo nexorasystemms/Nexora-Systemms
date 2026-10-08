@@ -78,6 +78,7 @@ export type ApplicationRow = {
   next_pay_date: string | null;
   term_months: number;
   product_type: "once_off" | "instalment";
+  loan_product: "personal_no_payslip" | "first_time_credit_check" | "tender_purchase_order" | null;
   purpose_category: string | null;
   purpose_text: string | null;
   referral_source: string | null;
@@ -156,6 +157,7 @@ export type DocumentRow = {
   entity_id: string;
   doc_type: string;
   file_path: string;
+  original_filename: string | null;
   sha256_hash: string;
   status: "pending" | "reviewed_accepted" | "rejected";
   review_notes: string | null;

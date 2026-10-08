@@ -154,7 +154,7 @@ export function generateVerificationEmail(code: string): string {
                 </div>
                 
                 <div class="warning">
-                    <strong>Important:</strong> This code will expire in 10 minutes. If you didn't request this verification, please ignore this email or contact our support team.
+                    <strong>Important:</strong> This code will expire in 3 minutes. If you didn't request this verification, please ignore this email or contact our support team.
                 </div>
             </div>
             

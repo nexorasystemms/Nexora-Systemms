@@ -187,30 +187,79 @@ export async function callVerificationFunction(request: VerificationRequest): Pr
   }
 }
 
-// Convenience functions for common verification operations
+function digitsOnly(code: string): string {
+  return String(code || '').replace(/\D/g, '')
+}
+
+async function lookupEmail(userId: string): Promise<string | undefined> {
+  const { data } = await supabase().from('users').select('email').eq('id', userId).maybeSingle()
+  return data?.email as string | undefined
+}
+
 export async function sendVerificationCode(email: string, userId: string, type: 'registration' | 'login' | 'password_reset' = 'registration'): Promise<ApiResponse> {
-  return callVerificationFunction({
-    action: 'generate',
-    email,
-    userId,
-    type
+  // Auth already emails a one-time code on signup. Resend that same code so the
+  // inbox matches what verifyOtp accepts — do not issue a second unrelated code.
+  if (type === 'registration') {
+    const { error } = await supabase().auth.resend({ type: 'signup', email })
+    if (!error) return { success: true }
+  }
+  if (type === 'password_reset') {
+    const { error } = await supabase().auth.resetPasswordForEmail(email)
+    if (!error) return { success: true }
+  }
+
+  const { data, error } = await supabase().rpc('issue_email_verification_code', {
+    p_user_id: userId,
+    p_email: email,
+    p_type: type,
   })
+  if (!error && data?.success) {
+    const generated = await callVerificationFunction({ action: 'generate', email, userId, type })
+    if (generated.success) return generated
+    return { success: true }
+  }
+  return callVerificationFunction({ action: 'generate', email, userId, type })
 }
 
-export async function verifyCode(userId: string, code: string): Promise<ApiResponse> {
-  return callVerificationFunction({
-    action: 'verify',
-    userId,
-    code
+export async function verifyCode(userId: string, code: string, email?: string): Promise<ApiResponse> {
+  const digits = digitsOnly(code)
+  if (digits.length < 6) {
+    return { success: false, error: 'Enter the code from your email' }
+  }
+
+  const addr = email || await lookupEmail(userId)
+  if (addr) {
+    for (const otpType of ['signup', 'email'] as const) {
+      const { error } = await supabase().auth.verifyOtp({
+        email: addr,
+        token: digits,
+        type: otpType,
+      })
+      if (!error) {
+        await supabase().from('users').update({ status: 'active' }).eq('id', userId)
+        return { success: true }
+      }
+    }
+  }
+
+  const { data, error } = await supabase().rpc('verify_email_code', {
+    p_user_id: userId,
+    p_code: digits,
   })
+  if (!error && data?.success) return { success: true, data }
+  return {
+    success: false,
+    error: (data && data.error) || error?.message || 'Invalid or expired verification code',
+  }
 }
 
-export async function resendVerificationCode(userId: string, type: 'registration' | 'login' | 'password_reset' = 'registration'): Promise<ApiResponse> {
-  return callVerificationFunction({
-    action: 'resend',
-    userId,
-    type
-  })
+export async function resendVerificationCode(userId: string, type: 'registration' | 'login' | 'password_reset' = 'registration', email?: string): Promise<ApiResponse> {
+  const addr = email || await lookupEmail(userId)
+  if (addr) {
+    const issued = await sendVerificationCode(addr, userId, type)
+    if (issued.success) return issued
+  }
+  return callVerificationFunction({ action: 'resend', userId, type })
 }
 
 // Policy parameters management
@@ -256,7 +305,7 @@ export async function getDocumentSignedUrl(path: string): Promise<ApiResponse> {
   try {
     const { data, error } = await supabase().storage
       .from('documents')
-      .createSignedUrl(path, 60) // 1 hour expiry
+      .createSignedUrl(path, 3600)
 
     if (error) {
       return { success: false, error: error.message }

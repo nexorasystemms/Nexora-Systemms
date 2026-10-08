@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { loginAdmin, verifyAdminLogin, sendPasswordResetCode, resetPassword } from "@/lib/supabase/auth";
+import { loginAdmin, verifyAdminLogin, sendPasswordResetCode, verifyPasswordResetCode, completePasswordReset } from "@/lib/supabase/auth";
 import { usePageTitle } from "@/lib/usePageTitle";
 
-type Stage = "password" | "email_otp" | "forgot_password" | "reset_code";
+type Stage = "password" | "email_otp" | "forgot_password" | "reset_code" | "reset_password";
 
 const RESEND_COOLDOWN_SECONDS = 30;
 
@@ -28,6 +28,12 @@ export default function LoginPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(() => {
+    const message = searchParams.get("message");
+    if (message === "password-updated") return "Password updated. Sign in with your new password and current email.";
+    if (message === "email-changed") return "Email updated. Sign in with your new email address.";
+    return null;
+  });
   const [loading, setLoading] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
 
@@ -88,17 +94,34 @@ export default function LoginPage() {
   async function handleResetCodeSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setLoading(true);
+    const result = await verifyPasswordResetCode(email, code);
+    if (!result.success) {
+      setError(result.error || "Invalid or expired verification code");
+      setLoading(false);
+      return;
+    }
+    setStage("reset_password");
+    setNewPassword("");
+    setConfirmPassword("");
+    setLoading(false);
+  }
+
+  async function handleSaveNewPassword(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
     if (newPassword !== confirmPassword) { setError("Passwords do not match."); return; }
     if (newPassword.length < 6) { setError("Password must be at least 6 characters."); return; }
     setLoading(true);
-    const result = await resetPassword(email, code, newPassword);
+    const result = await completePasswordReset(newPassword);
     if (!result.success) {
       setError(result.error || "Failed to reset password");
       setLoading(false);
       return;
     }
     setStage("password");
-    setEmail(""); setPassword(""); setNewPassword(""); setConfirmPassword(""); setCode("");
+    setPassword(""); setNewPassword(""); setConfirmPassword(""); setCode("");
+    setInfo("Password updated. Sign in with your new password and current email.");
     setLoading(false);
   }
 
@@ -168,6 +191,7 @@ export default function LoginPage() {
                     className="w-full h-9 px-space-md bg-surface-container-low text-on-surface text-sm rounded focus:outline-none focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary"
                   />
                 </div>
+                {info && <p className="text-sm text-primary">{info}</p>}
                 {error && <p className="text-sm text-error">{error}</p>}
                 <button
                   type="submit"
@@ -264,13 +288,12 @@ export default function LoginPage() {
               </form>
             )}
 
-            {/* Reset code stage */}
             {stage === "reset_code" && (
               <form onSubmit={handleResetCodeSubmit} className="flex flex-col gap-space-md">
                 <div>
-                  <h1 className="text-lg font-semibold text-on-surface mb-1">Enter reset code</h1>
+                  <h1 className="text-lg font-semibold text-on-surface mb-1">Verify your email</h1>
                   <p className="text-sm text-on-surface-variant">
-                    We sent a code to <span className="font-medium text-on-surface">{maskEmail(email)}</span>. Enter it below and create a new password.
+                    Code sent to <span className="font-medium text-on-surface">{maskEmail(email)}</span>.
                   </p>
                 </div>
                 <div className="flex flex-col gap-1">
@@ -285,8 +308,36 @@ export default function LoginPage() {
                     value={code}
                     onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
                     className="w-full h-11 px-space-md bg-surface-container-low text-on-surface text-center text-lg font-mono tracking-widest rounded focus:outline-none focus:ring-2 focus:ring-primary"
-                    placeholder="Enter 8-digit code"
+                    placeholder="Enter the code from your email"
                   />
+                </div>
+                {error && <p className="text-sm text-error">{error}</p>}
+                <button type="submit" disabled={loading || code.length < 6} className="w-full h-10 rounded bg-primary-container text-on-primary text-sm font-semibold hover:bg-primary transition disabled:opacity-50 shadow-sm">
+                  {loading ? "Verifying…" : "Verify code"}
+                </button>
+                <div className="flex items-center justify-between text-xs text-on-surface-variant">
+                  <button
+                    type="button"
+                    onClick={handleResend}
+                    disabled={resendCooldown > 0}
+                    className="text-secondary hover:underline disabled:text-outline disabled:no-underline disabled:cursor-not-allowed"
+                  >
+                    {resendCooldown > 0 ? `Resend code (${resendCooldown}s)` : "Resend code"}
+                  </button>
+                  <button type="button" onClick={() => { setStage("forgot_password"); setCode(""); setError(null); }} className="hover:underline">
+                    Change email
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {stage === "reset_password" && (
+              <form onSubmit={handleSaveNewPassword} className="flex flex-col gap-space-md">
+                <div>
+                  <h1 className="text-lg font-semibold text-on-surface mb-1">Set a new password</h1>
+                  <p className="text-sm text-on-surface-variant">
+                    Choose a new password for <span className="font-medium text-on-surface">{maskEmail(email)}</span>.
+                  </p>
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-[12px] font-medium text-on-surface-variant">New password</label>
@@ -297,10 +348,10 @@ export default function LoginPage() {
                   <input type="password" required minLength={6} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="w-full h-9 px-space-md bg-surface-container-low text-on-surface text-sm rounded focus:outline-none focus:ring-2 focus:ring-primary" placeholder="••••••••" />
                 </div>
                 {error && <p className="text-sm text-error">{error}</p>}
-                <button type="submit" disabled={loading || code.length !== 8} className="w-full h-10 rounded bg-primary-container text-on-primary text-sm font-semibold hover:bg-primary transition disabled:opacity-50 shadow-sm">
-                  {loading ? "Resetting…" : "Reset password"}
+                <button type="submit" disabled={loading} className="w-full h-10 rounded bg-primary-container text-on-primary text-sm font-semibold hover:bg-primary transition disabled:opacity-50 shadow-sm">
+                  {loading ? "Saving…" : "Save new password"}
                 </button>
-                <button type="button" onClick={() => { setStage("forgot_password"); setCode(""); setError(null); }} className="w-full text-sm text-secondary hover:underline">
+                <button type="button" onClick={() => { setStage("reset_code"); setError(null); }} className="w-full text-sm text-secondary hover:underline">
                   Back
                 </button>
               </form>
