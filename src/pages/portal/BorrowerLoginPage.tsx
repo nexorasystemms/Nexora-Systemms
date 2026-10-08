@@ -31,7 +31,7 @@ function Field({
         autoComplete={autoComplete} placeholder={placeholder} maxLength={maxLength}
         inputMode={inputMode} pattern={pattern}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full px-4 py-3 rounded-xl border border-outline bg-white text-sm text-on-surface placeholder-slate-400
+        className="w-full min-h-11 px-4 py-3 rounded-xl border border-outline bg-white text-base text-on-surface placeholder-slate-400
                    focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-colors"
       />
     </div>

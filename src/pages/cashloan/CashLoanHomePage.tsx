@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { TMU_ROOT, tmuAssets, tmuContact, tmuPortal } from "../../lib/tenants";
+import { TMU_ROOT, tmuAssets, tmuContact, tmuPortal, tmuTel, tmuWhatsApp } from "../../lib/tenants";
 import { usePageTitle } from "../../lib/usePageTitle";
 import { LOAN_PRODUCTS } from "../../lib/loan-products";
 
@@ -50,6 +50,24 @@ export default function CashLoanHomePage() {
   const [amount, setAmount] = useState(4000);
   const [nextPay, setNextPay] = useState("");
 
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const close = () => { if (mq.matches) setMenuOpen(false); };
+    mq.addEventListener("change", close);
+    return () => mq.removeEventListener("change", close);
+  }, []);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setMenuOpen(false); };
+    window.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+    };
+  }, [menuOpen]);
+
   const namfisa = Math.round(amount * 0.0103 * 100) / 100;
   const stamp = 5;
   const interest = Math.round(amount * 0.3 * 100) / 100;
@@ -71,33 +89,35 @@ export default function CashLoanHomePage() {
 
   return (
     <div data-surface="tmu" className="min-h-screen bg-background text-on-surface">
-      <header className="border-b border-outline-variant bg-surface-container-lowest">
-        <div className="mx-auto flex h-[88px] max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
-          <Link to={TMU_ROOT} className="flex items-center h-14 shrink-0 transition-transform duration-300 hover:scale-[1.03]">
-            <img src={tmuAssets.logo} alt="TMU Capital Pty Ltd" className="h-12 w-auto max-w-[240px] object-contain object-left" />
+      <header className="sticky top-0 z-50 border-b border-outline-variant bg-surface-container-lowest">
+        <div className="mx-auto flex h-[72px] sm:h-[88px] max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
+          <Link to={TMU_ROOT} className="flex items-center h-14 shrink-0" onClick={() => setMenuOpen(false)}>
+            <img src={tmuAssets.logo} alt="TMU Capital Pty Ltd" className="h-10 sm:h-12 w-auto max-w-[200px] sm:max-w-[240px] object-contain object-left" />
           </Link>
-          <nav className="hidden lg:flex items-center gap-6 text-sm font-bold">
-            <a href="#home" className="tmu-nav-link is-active text-primary">Home</a>
-            <a href="#loans" className="tmu-nav-link text-on-surface hover:text-primary">Our services</a>
-            <a href="#about" className="tmu-nav-link text-on-surface hover:text-primary">About us</a>
-            <a href="#contact" className="tmu-nav-link text-on-surface hover:text-primary">Contact us</a>
+          <nav className="hidden lg:flex items-center gap-6 text-sm font-bold" aria-label="Primary">
+            <a href="#home" className="tmu-nav-link is-active text-primary min-h-11 inline-flex items-center">Home</a>
+            <a href="#loans" className="tmu-nav-link text-on-surface hover:text-primary min-h-11 inline-flex items-center">Our services</a>
+            <a href="#about" className="tmu-nav-link text-on-surface hover:text-primary min-h-11 inline-flex items-center">About us</a>
+            <a href="#contact" className="tmu-nav-link text-on-surface hover:text-primary min-h-11 inline-flex items-center">Contact us</a>
             <Link
               to={tmuPortal.login}
-              className="tmu-btn tmu-btn-olive ml-2 inline-flex h-10 items-center justify-center rounded-md px-4 text-sm font-bold"
+              className="tmu-btn tmu-btn-olive ml-2 inline-flex h-11 items-center justify-center rounded-md px-4 text-sm font-bold"
             >
               <span>Log in</span>
             </Link>
             <Link
               to={tmuPortal.register}
-              className="tmu-btn tmu-btn-navy inline-flex h-10 items-center justify-center rounded-md px-4 text-sm font-bold"
+              className="tmu-btn tmu-btn-navy inline-flex h-11 items-center justify-center rounded-md px-4 text-sm font-bold"
             >
               <span>Register</span>
             </Link>
           </nav>
           <button
             type="button"
-            className="lg:hidden tmu-menu-btn tmu-btn tmu-btn-gold h-11 w-11 rounded-md flex items-center justify-center"
-            aria-label="Open menu"
+            className="lg:hidden tmu-menu-btn tmu-btn tmu-btn-gold h-11 w-11 min-h-11 min-w-11 rounded-md flex items-center justify-center"
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
+            aria-expanded={menuOpen}
+            aria-controls="tmu-mobile-nav"
             onClick={() => setMenuOpen((v) => !v)}
           >
             <span>
@@ -106,27 +126,40 @@ export default function CashLoanHomePage() {
           </button>
         </div>
         {menuOpen && (
-          <div className="lg:hidden border-t border-outline-variant px-4 py-3 space-y-3 animate-fade-up">
-            <a href="#loans" className="block py-2 font-bold" onClick={() => setMenuOpen(false)}>Our services</a>
-            <a href="#about" className="block py-2 font-bold" onClick={() => setMenuOpen(false)}>About us</a>
-            <a href="#contact" className="block py-2 font-bold" onClick={() => setMenuOpen(false)}>Contact us</a>
-            <div className="flex flex-col gap-2 pt-1">
-              <Link
-                to={tmuPortal.login}
-                className="tmu-btn tmu-btn-olive flex h-11 items-center justify-center rounded-md text-sm font-bold"
-                onClick={() => setMenuOpen(false)}
-              >
-                <span>Log in</span>
-              </Link>
-              <Link
-                to={tmuPortal.register}
-                className="tmu-btn tmu-btn-navy flex h-11 items-center justify-center rounded-md text-sm font-bold"
-                onClick={() => setMenuOpen(false)}
-              >
-                <span>Register</span>
-              </Link>
-            </div>
-          </div>
+          <>
+            <button
+              type="button"
+              className="lg:hidden fixed inset-0 top-[72px] sm:top-[88px] z-40 bg-black/35"
+              aria-label="Close menu"
+              onClick={() => setMenuOpen(false)}
+            />
+            <nav
+              id="tmu-mobile-nav"
+              className="lg:hidden relative z-50 border-t border-outline-variant bg-surface-container-lowest px-4 py-4 space-y-2 shadow-lg"
+              aria-label="Mobile"
+            >
+              <a href="#home" className="block min-h-11 py-3 font-bold" onClick={() => setMenuOpen(false)}>Home</a>
+              <a href="#loans" className="block min-h-11 py-3 font-bold" onClick={() => setMenuOpen(false)}>Our services</a>
+              <a href="#about" className="block min-h-11 py-3 font-bold" onClick={() => setMenuOpen(false)}>About us</a>
+              <a href="#contact" className="block min-h-11 py-3 font-bold" onClick={() => setMenuOpen(false)}>Contact us</a>
+              <div className="flex flex-col gap-2 pt-2">
+                <Link
+                  to={tmuPortal.login}
+                  className="tmu-btn tmu-btn-olive flex h-12 items-center justify-center rounded-md text-sm font-bold"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  <span>Log in</span>
+                </Link>
+                <Link
+                  to={tmuPortal.register}
+                  className="tmu-btn tmu-btn-navy flex h-12 items-center justify-center rounded-md text-sm font-bold"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  <span>Register</span>
+                </Link>
+              </div>
+            </nav>
+          </>
         )}
       </header>
 
@@ -154,7 +187,7 @@ export default function CashLoanHomePage() {
             <div className="animate-fade-up delay-300 mt-7">
               <Link
                 to={tmuPortal.register}
-                className="tmu-btn tmu-btn-navy inline-flex h-12 items-center justify-center rounded-md px-6 text-sm font-bold"
+                className="tmu-btn tmu-btn-navy inline-flex h-12 w-full sm:w-auto items-center justify-center rounded-md px-6 text-sm font-bold"
               >
                 <span>Create your account</span>
               </Link>
@@ -180,30 +213,32 @@ export default function CashLoanHomePage() {
                   Apply online, upload the documents for your facility, and a person on the lending team reviews every request.
                 </p>
                 <div className="mt-6 flex flex-wrap gap-3 text-sm font-semibold">
-                  <span className="tmu-chip inline-flex items-center gap-2 rounded-md bg-white/10 px-3 py-2">
+                  <a href={tmuTel(tmuContact.landline)} className="tmu-chip inline-flex min-h-11 items-center gap-2 rounded-md bg-white/10 px-3 py-2">
                     <Icon name="call" className="text-[18px]" />
                     {tmuContact.landline} Landline
-                  </span>
-                  <span className="tmu-chip inline-flex items-center gap-2 rounded-md bg-white/10 px-3 py-2">
+                  </a>
+                  <a href={tmuWhatsApp} target="_blank" rel="noreferrer" className="tmu-chip inline-flex min-h-11 items-center gap-2 rounded-md bg-white/10 px-3 py-2">
                     <Icon name="chat" className="text-[18px]" />
                     {tmuContact.phone} WhatsApp
-                  </span>
+                  </a>
                 </div>
               </div>
             </div>
 
-            <div id="quote" className="tmu-reveal delay-200 animate-slide-right">
+            <div id="quote" className="tmu-reveal delay-200 animate-slide-right scroll-mt-24">
               <h2 className="tmu-display text-3xl text-on-surface mb-6">Loan Details</h2>
               <div className="space-y-4">
-                <label className="block text-sm font-semibold">How much do you need?</label>
-                <div className="flex items-center gap-4">
+                <label className="block text-sm font-semibold" htmlFor="tmu-amount">How much do you need?</label>
+                <div className="flex items-center gap-3 sm:gap-4">
                   <input
+                    id="tmu-amount"
                     type="number"
+                    inputMode="numeric"
                     min={500}
                     max={250000}
                     value={amount}
                     onChange={(e) => setAmount(Number(e.target.value) || 0)}
-                    className="w-28 rounded-md border border-outline px-3 py-2 text-sm transition-shadow focus:border-primary focus:shadow-[0_0_0_3px_rgba(237,181,12,0.25)] focus:outline-none"
+                    className="tmu-field w-28 rounded-md border border-outline px-3 py-2 transition-shadow focus:border-primary focus:shadow-[0_0_0_3px_rgba(237,181,12,0.25)] focus:outline-none"
                   />
                   <input
                     type="range"
@@ -212,21 +247,23 @@ export default function CashLoanHomePage() {
                     step={100}
                     value={Math.min(amount, 25000)}
                     onChange={(e) => setAmount(Number(e.target.value))}
-                    className="flex-1 accent-primary"
+                    aria-label="Loan amount"
+                    className="tmu-range flex-1"
                   />
                 </div>
-                <label className="block text-sm font-semibold">When is your next salary payment date?</label>
+                <label className="block text-sm font-semibold" htmlFor="tmu-next-pay">When is your next salary payment date?</label>
                 <input
+                  id="tmu-next-pay"
                   type="date"
                   value={nextPay}
                   onChange={(e) => setNextPay(e.target.value)}
-                  className="w-full rounded-md border border-outline px-3 py-2.5 text-sm transition-shadow focus:border-primary focus:shadow-[0_0_0_3px_rgba(237,181,12,0.25)] focus:outline-none"
+                  className="tmu-field w-full rounded-md border border-outline px-3 py-2.5 transition-shadow focus:border-primary focus:shadow-[0_0_0_3px_rgba(237,181,12,0.25)] focus:outline-none"
                 />
                 <div className="overflow-hidden rounded-sm border border-secondary-container">
                   {quoteRows.map(([label, value]) => (
-                    <div key={label} className="tmu-quote-row flex justify-between gap-4 px-4 py-3 text-sm font-semibold">
-                      <span>{label}</span>
-                      <span key={value} className="tmu-quote-flash">{value}</span>
+                    <div key={label} className="tmu-quote-row flex justify-between gap-3 px-4 py-3 text-sm font-semibold">
+                      <span className="min-w-0">{label}</span>
+                      <span key={value} className="tmu-quote-flash shrink-0">{value}</span>
                     </div>
                   ))}
                 </div>
@@ -249,7 +286,7 @@ export default function CashLoanHomePage() {
           </div>
         </section>
 
-        <section id="loans" className="bg-surface py-16">
+        <section id="loans" className="bg-surface py-16 scroll-mt-24">
           <div className="mx-auto max-w-6xl px-4 sm:px-6">
             <div className="tmu-reveal">
               <h2 className="tmu-display text-3xl mb-2">Our loan facilities</h2>
@@ -277,7 +314,7 @@ export default function CashLoanHomePage() {
           </div>
         </section>
 
-        <section id="about" className="py-16">
+        <section id="about" className="py-16 scroll-mt-24">
           <div className="mx-auto max-w-6xl px-4 sm:px-6 grid gap-8 md:grid-cols-3">
             <div className="tmu-reveal">
               <h2 className="tmu-display text-2xl mb-3">About us</h2>
@@ -292,8 +329,8 @@ export default function CashLoanHomePage() {
               <div className="tmu-gold-rule mb-3" />
               <ul className="text-sm leading-7 text-on-surface-variant space-y-1">
                 <li>{tmuContact.address}</li>
-                <li><a className="hover:text-primary" href={`mailto:${tmuContact.email}`}>{tmuContact.email}</a></li>
-                <li><a className="hover:text-primary" href={`tel:${tmuContact.phone.replace(/\s/g, "")}`}>{tmuContact.phone}</a></li>
+                <li><a className="inline-flex min-h-11 items-center hover:text-primary" href={`mailto:${tmuContact.email}`}>{tmuContact.email}</a></li>
+                <li><a className="inline-flex min-h-11 items-center hover:text-primary" href={tmuTel(tmuContact.phone)}>{tmuContact.phone}</a></li>
               </ul>
             </div>
             <div className="tmu-reveal delay-200">
@@ -309,10 +346,10 @@ export default function CashLoanHomePage() {
         </section>
       </main>
 
-      <footer id="contact" className="bg-inverse-surface text-[#acacac] py-8">
+      <footer id="contact" className="bg-inverse-surface text-[#acacac] py-8 scroll-mt-24">
         <div className="mx-auto max-w-6xl px-4 sm:px-6 flex flex-wrap items-center justify-between gap-4">
           <p className="text-sm">Copyrights © {new Date().getFullYear()} TMU Holdings Pty Ltd. All Rights Reserved.</p>
-          <Link to="/" className="text-xs hover:text-primary">Powered by Nexora Systems</Link>
+          <Link to="/" className="inline-flex min-h-11 items-center text-xs hover:text-primary">Powered by Nexora Systems</Link>
         </div>
       </footer>
     </div>

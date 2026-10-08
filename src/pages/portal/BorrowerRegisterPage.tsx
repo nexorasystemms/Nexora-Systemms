@@ -24,7 +24,7 @@ function Field({
       </label>
       <input
         id={name} name={name} type={type} required={required} placeholder={placeholder}
-        className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white text-sm text-slate-900 placeholder-slate-400
+        className="w-full min-h-11 px-4 py-3 rounded-xl border border-slate-200 bg-white text-base text-slate-900 placeholder-slate-400
                    focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-colors"
       />
       {hint && <p className="mt-1 text-[11px] text-slate-400">{hint}</p>}
@@ -42,7 +42,7 @@ function SelectField({
       </label>
       <select
         id={name} name={name} required={required} defaultValue=""
-        className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white text-sm text-slate-900
+        className="w-full min-h-11 px-4 py-3 rounded-xl border border-slate-200 bg-white text-base text-slate-900
                    focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-colors appearance-none"
       >
         <option value="" disabled>Select…</option>

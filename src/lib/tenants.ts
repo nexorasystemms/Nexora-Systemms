@@ -24,6 +24,9 @@ export const tmuContact = {
   address: "Independence Avenue, Windhoek, Namibia",
 } as const;
 
+export const tmuTel = (n: string) => `tel:${n.replace(/\s/g, "")}`;
+export const tmuWhatsApp = `https://wa.me/${tmuContact.phone.replace(/[^\d]/g, "")}`;
+
 /** TMU Holdings brand assets (tenant-specific; Nexora house brand stays on /) */
 export const tmuAssets = {
   logo: "/tmu/tmu-holdings-logo.png",

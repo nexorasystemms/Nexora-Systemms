@@ -98,7 +98,7 @@ export default function PortalLayout() {
                 {/* Mobile menu toggle */}
                 <button
                   type="button"
-                  className="sm:hidden p-2 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors"
+                  className="sm:hidden min-h-11 min-w-11 p-2 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors"
                   onClick={() => setMobileMenuOpen((v) => !v)}
                   aria-label="Menu"
                 >
