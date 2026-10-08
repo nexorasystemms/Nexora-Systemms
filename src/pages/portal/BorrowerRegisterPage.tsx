@@ -87,7 +87,7 @@ function VerificationCard({
             </span>
             <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Verify Your Email</h1>
             <p className="text-sm text-slate-500 mt-1">
-              Code sent to <span className="font-medium text-slate-700">{maskEmail(email)}</span>
+              An 8-digit code was sent to <span className="font-medium text-slate-700">{maskEmail(email)}</span>
             </p>
           </div>
 
@@ -107,7 +107,7 @@ function VerificationCard({
                 />
               </div>
               <button
-                type="submit" disabled={status === "loading" || code.length < 6}
+                type="submit" disabled={status === "loading" || code.length !== 8}
                 className="w-full py-3.5 rounded-xl bg-tertiary hover:opacity-90 text-on-tertiary font-semibold text-sm
                            transition-all disabled:opacity-50 shadow-sm min-h-[48px]"
               >

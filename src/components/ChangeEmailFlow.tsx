@@ -144,7 +144,7 @@ export default function ChangeEmailFlow({
             </div>
             <button
               type="submit"
-              disabled={loading || code.length < 6}
+              disabled={loading || code.length !== 8}
               className="w-full py-3.5 rounded-xl bg-indigo-900 hover:bg-indigo-800 text-white font-semibold text-sm
                          transition-all disabled:opacity-50 shadow-sm min-h-[48px]"
             >

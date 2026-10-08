@@ -197,34 +197,40 @@ async function lookupEmail(userId: string): Promise<string | undefined> {
 }
 
 export async function sendVerificationCode(email: string, userId: string, type: 'registration' | 'login' | 'password_reset' = 'registration'): Promise<ApiResponse> {
-  // Auth already emails a one-time code on signup. Resend that same code so the
-  // inbox matches what verifyOtp accepts — do not issue a second unrelated code.
+  const addr = email.trim().toLowerCase()
+
+  // Same SMTP as borrower signup: Auth emails the OTP the inbox can actually receive.
   if (type === 'registration') {
-    const { error } = await supabase().auth.resend({ type: 'signup', email })
+    const { error } = await supabase().auth.resend({ type: 'signup', email: addr })
     if (!error) return { success: true }
   }
   if (type === 'password_reset') {
-    const { error } = await supabase().auth.resetPasswordForEmail(email)
+    const { error } = await supabase().auth.resetPasswordForEmail(addr)
     if (!error) return { success: true }
   }
-
-  const { data, error } = await supabase().rpc('issue_email_verification_code', {
-    p_user_id: userId,
-    p_email: email,
-    p_type: type,
-  })
-  if (!error && data?.success) {
-    const generated = await callVerificationFunction({ action: 'generate', email, userId, type })
+  if (type === 'login') {
+    const { error } = await supabase().auth.signInWithOtp({
+      email: addr,
+      options: { shouldCreateUser: false },
+    })
+    if (!error) return { success: true }
+    const generated = await callVerificationFunction({ action: 'generate', email: addr, userId, type })
     if (generated.success) return generated
-    return { success: true }
+    return {
+      success: false,
+      error: error?.message || generated.error || 'Failed to send verification code',
+    }
   }
-  return callVerificationFunction({ action: 'generate', email, userId, type })
+
+  const generated = await callVerificationFunction({ action: 'generate', email: addr, userId, type })
+  if (generated.success) return generated
+  return { success: false, error: generated.error || 'Failed to send verification code' }
 }
 
 export async function verifyCode(userId: string, code: string, email?: string): Promise<ApiResponse> {
   const digits = digitsOnly(code)
-  if (digits.length < 6) {
-    return { success: false, error: 'Enter the code from your email' }
+  if (digits.length < 8) {
+    return { success: false, error: 'Enter the 8-digit code from your email' }
   }
 
   const addr = email || await lookupEmail(userId)

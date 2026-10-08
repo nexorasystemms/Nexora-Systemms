@@ -196,13 +196,13 @@ export default function BorrowerLoginPage() {
             {stage === "reset_code" && (
               <form onSubmit={handleVerifyResetCode} className="space-y-4">
                 <p className="text-sm text-slate-500">
-                  Code sent to <span className="font-medium text-slate-700">{maskEmail(email)}</span>
+                  An 8-digit code was sent to <span className="font-medium text-slate-700">{maskEmail(email)}</span>
                 </p>
                 <Field label="Verification Code" id="code" value={code}
                   onChange={(v) => setCode(v.replace(/\D/g, ""))}
                   placeholder="Enter the code from your email" inputMode="numeric" pattern="[0-9]*" maxLength={8}
                   required autoFocus />
-                <PrimaryBtn loading={loading} label="Verify code" loadingLabel="Verifying…" disabled={code.length < 6} />
+                <PrimaryBtn loading={loading} label="Verify code" loadingLabel="Verifying…" disabled={code.length !== 8} />
                 <div className="flex items-center justify-between text-xs text-slate-500">
                   <button
                     type="button" onClick={handleResend} disabled={cooldown > 0}

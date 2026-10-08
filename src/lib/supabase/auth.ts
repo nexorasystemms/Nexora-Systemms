@@ -40,16 +40,21 @@ export async function loginAdmin(email: string, password: string): Promise<AuthR
 
     // Require email verification for admin and super_admin
     if (profile.role === 'admin' || profile.role === 'super_admin') {
-      // Generate verification code using Edge Function
-      const verificationResult = await sendVerificationCode(authData.user.email!, authData.user.id, 'login')
-      
+      const userId = authData.user.id
+      const userEmail = authData.user.email!
+      const verificationResult = await sendVerificationCode(userEmail, userId, 'login')
+
       if (!verificationResult.success) {
+        await supabase().auth.signOut()
         return { success: false, error: verificationResult.error || 'Failed to send verification code' }
       }
 
+      // Password session is not enough for admin — OTP must complete the sign-in.
+      await supabase().auth.signOut()
+
       return {
         success: true,
-        tempUserId: authData.user.id,
+        tempUserId: userId,
         requiresVerification: true
       }
     }
@@ -62,9 +67,9 @@ export async function loginAdmin(email: string, password: string): Promise<AuthR
 }
 
 // Verify admin login
-export async function verifyAdminLogin(tempUserId: string, code: string): Promise<AuthResponse> {
+export async function verifyAdminLogin(tempUserId: string, code: string, email?: string): Promise<AuthResponse> {
   try {
-    const result = await verifyCode(tempUserId, code)
+    const result = await verifyCode(tempUserId, code, email)
     
     if (result.success) {
       return { success: true }
@@ -75,6 +80,12 @@ export async function verifyAdminLogin(tempUserId: string, code: string): Promis
     console.error('Verification error:', error)
     return { success: false, error: 'An unexpected error occurred' }
   }
+}
+
+export async function resendAdminLoginCode(email: string, userId: string): Promise<AuthResponse> {
+  const result = await sendVerificationCode(email, userId, 'login')
+  if (result.success) return { success: true }
+  return { success: false, error: result.error || 'Failed to resend verification code' }
 }
 
 // Borrower registration

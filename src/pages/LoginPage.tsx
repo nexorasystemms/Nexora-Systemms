@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { loginAdmin, verifyAdminLogin, sendPasswordResetCode, verifyPasswordResetCode, completePasswordReset } from "@/lib/supabase/auth";
+import { loginAdmin, verifyAdminLogin, resendAdminLoginCode, sendPasswordResetCode, verifyPasswordResetCode, completePasswordReset } from "@/lib/supabase/auth";
 import { usePageTitle } from "@/lib/usePageTitle";
 
 type Stage = "password" | "email_otp" | "forgot_password" | "reset_code" | "reset_password";
@@ -56,6 +56,7 @@ export default function LoginPage() {
     if (result.requiresVerification && result.tempUserId) {
       setTempUserId(result.tempUserId);
       setStage("email_otp");
+      setResendCooldown(RESEND_COOLDOWN_SECONDS);
       setLoading(false);
       return;
     }
@@ -66,7 +67,7 @@ export default function LoginPage() {
     e.preventDefault();
     setError(null);
     setLoading(true);
-    const result = await verifyAdminLogin(tempUserId, code);
+    const result = await verifyAdminLogin(tempUserId, code, email);
     if (!result.success) {
       setError(result.error || "Invalid verification code");
       setLoading(false);
@@ -128,7 +129,9 @@ export default function LoginPage() {
   async function handleResend() {
     if (resendCooldown > 0) return;
     setError(null);
-    const result = await sendPasswordResetCode(email);
+    const result = stage === "email_otp"
+      ? await resendAdminLoginCode(email, tempUserId)
+      : await sendPasswordResetCode(email);
     if (result.success) setResendCooldown(RESEND_COOLDOWN_SECONDS);
     else setError(result.error || "Failed to resend code");
   }
@@ -216,14 +219,14 @@ export default function LoginPage() {
                 <div>
                   <h1 className="text-lg font-semibold text-on-surface mb-1">Check your email</h1>
                   <p className="text-sm text-on-surface-variant">
-                    We sent a 6-digit code to <span className="font-medium text-on-surface">{maskEmail(email)}</span>. Enter it below to finish signing in.
+                    We sent an 8-digit code to <span className="font-medium text-on-surface">{maskEmail(email)}</span>. Enter it below to finish signing in.
                   </p>
                 </div>
                 <input
                   type="text"
                   inputMode="numeric"
                   pattern="[0-9]*"
-                  maxLength={6}
+                  maxLength={8}
                   required
                   autoFocus
                   value={code}
@@ -233,7 +236,7 @@ export default function LoginPage() {
                 {error && <p className="text-sm text-error">{error}</p>}
                 <button
                   type="submit"
-                  disabled={loading || code.length !== 6}
+                  disabled={loading || code.length !== 8}
                   className="w-full h-10 rounded bg-primary-container text-on-primary text-sm font-semibold hover:bg-primary transition disabled:opacity-50 shadow-sm"
                 >
                   {loading ? "Verifying…" : "Verify & sign in"}
@@ -293,7 +296,7 @@ export default function LoginPage() {
                 <div>
                   <h1 className="text-lg font-semibold text-on-surface mb-1">Verify your email</h1>
                   <p className="text-sm text-on-surface-variant">
-                    Code sent to <span className="font-medium text-on-surface">{maskEmail(email)}</span>.
+                    An 8-digit code was sent to <span className="font-medium text-on-surface">{maskEmail(email)}</span>.
                   </p>
                 </div>
                 <div className="flex flex-col gap-1">
@@ -312,7 +315,7 @@ export default function LoginPage() {
                   />
                 </div>
                 {error && <p className="text-sm text-error">{error}</p>}
-                <button type="submit" disabled={loading || code.length < 6} className="w-full h-10 rounded bg-primary-container text-on-primary text-sm font-semibold hover:bg-primary transition disabled:opacity-50 shadow-sm">
+                <button type="submit" disabled={loading || code.length !== 8} className="w-full h-10 rounded bg-primary-container text-on-primary text-sm font-semibold hover:bg-primary transition disabled:opacity-50 shadow-sm">
                   {loading ? "Verifying…" : "Verify code"}
                 </button>
                 <div className="flex items-center justify-between text-xs text-on-surface-variant">
