@@ -1,4 +1,5 @@
 import { createClient } from './client'
+import { requestAssessment } from '../nexora'
 
 function supabase() {
   // RPCs and columns used here are not all present in generated Database types.
@@ -636,5 +637,7 @@ export async function submitBorrowerApplication(formData: FormData): Promise<Api
   }
 
   await updateApplicationStatus(applicationId, 'submitted', user.id)
+  // Hand the application to Nexora's rules engine; never blocks or fails the submission.
+  void requestAssessment(applicationId)
   return { success: true, data: { applicationId } }
 }

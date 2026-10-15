@@ -3,6 +3,8 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { tmuPortal } from "../../lib/tenants";
 import { submitBorrowerApplication } from "../../lib/supabase/stubs";
 import { getLoanProduct, LOAN_PRODUCTS, type LoanProduct, type LoanProductId } from "../../lib/loan-products";
+import type { FormFields } from "../../lib/nexora";
+import DocumentAutofill from "./DocumentAutofill";
 
 export default function BorrowerApplyPage() {
   const navigate = useNavigate();
@@ -73,6 +75,22 @@ export default function BorrowerApplyPage() {
     setError(null);
     setConsentBureau(next.requiresCreditCheckConsent);
     setStep(1);
+  }
+
+  // Values read from uploaded documents by Nexora pre-fill the matching form fields.
+  function applyExtracted(f: FormFields) {
+    if (f.employerName) setEmployerName(f.employerName);
+    if (f.employerAddress) setEmployerAddress(f.employerAddress);
+    if (f.occupation) setOccupation(f.occupation);
+    if (f.monthlyNetSalary) setMonthlyNetSalary(f.monthlyNetSalary);
+    if (f.grossSalary) setGrossSalary(f.grossSalary);
+    if (f.employmentStartDate) setEmploymentStartDate(f.employmentStartDate);
+    if (f.bankName) setBankName(f.bankName);
+    if (f.accountName) setAccountName(f.accountName);
+    if (f.bankBranch) setBankBranch(f.bankBranch);
+    if (f.accountNumber) setAccountNumber(f.accountNumber);
+    if (f.businessName) setBusinessName(f.businessName);
+    if (f.tenderReference) setTenderReference(f.tenderReference);
   }
 
   const isShortTerm = termMonths <= 5;
@@ -301,6 +319,13 @@ export default function BorrowerApplyPage() {
                       I confirm I meet these requirements for {product.title}.
                     </label>
                   </div>
+
+                  <DocumentAutofill
+                    product={product}
+                    files={files}
+                    onFile={(key, file) => setFiles((prev) => ({ ...prev, [key]: file }))}
+                    onFill={applyExtracted}
+                  />
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-4">
