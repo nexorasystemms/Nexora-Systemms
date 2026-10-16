@@ -4,7 +4,13 @@ import { TMU_ROOT, tmuAssets, tmuPortal } from "../../lib/tenants";
 import { registerBorrower, verifyBorrowerEmail } from "../../lib/supabase/auth";
 import { resendVerificationCode } from "../../lib/supabase/admin";
 
-const RESEND_COOLDOWN = 30;
+const CODE_TTL_SECONDS = 180;
+
+function formatMmSs(total: number): string {
+  const m = Math.floor(Math.max(0, total) / 60);
+  const s = Math.max(0, total) % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
 
 function maskEmail(email: string): string {
   const [local, domain] = email.split("@");
@@ -57,15 +63,14 @@ function VerificationCard({
   email, tempUserId, onBack,
 }: { email: string; tempUserId: string; onBack: () => void }) {
   const [code, setCode] = useState("");
-  const [cooldown, setCooldown] = useState(RESEND_COOLDOWN);
+  const [cooldown, setCooldown] = useState(CODE_TTL_SECONDS);
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
 
   useEffect(() => {
-    if (cooldown <= 0) return;
-    const t = setTimeout(() => setCooldown((s) => Math.max(0, s - 1)), 1000);
-    return () => clearTimeout(t);
-  }, [cooldown]);
+    const t = setInterval(() => setCooldown((s) => (s <= 0 ? 0 : s - 1)), 1000);
+    return () => clearInterval(t);
+  }, []);
 
   async function handleVerify(e: React.FormEvent) {
     e.preventDefault(); setStatus("loading"); setErrorMsg("");
@@ -88,6 +93,9 @@ function VerificationCard({
             <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Verify Your Email</h1>
             <p className="text-sm text-slate-500 mt-1">
               An 8-digit code was sent to <span className="font-medium text-slate-700">{maskEmail(email)}</span>
+            </p>
+            <p className={`mt-2 font-mono text-lg font-semibold tabular-nums ${cooldown === 0 ? "text-rose-600" : "text-slate-800"}`}>
+              {cooldown > 0 ? `Code expires in ${formatMmSs(cooldown)}` : "Code expired"}
             </p>
           </div>
 
@@ -126,12 +134,12 @@ function VerificationCard({
                     }
                     setStatus("idle");
                     setErrorMsg("");
-                    setCooldown(RESEND_COOLDOWN);
+                    setCooldown(CODE_TTL_SECONDS);
                   }}
                   disabled={cooldown > 0}
                   className="text-secondary hover:underline disabled:text-slate-400 disabled:no-underline min-h-[44px] px-1"
                 >
-                  {cooldown > 0 ? `Resend (${cooldown}s)` : "Resend code"}
+                  {cooldown > 0 ? `Resend (${formatMmSs(cooldown)})` : "Resend code"}
                 </button>
                 <button type="button" onClick={onBack} className="hover:underline min-h-[44px] px-1">
                   Change email

@@ -180,8 +180,14 @@ export async function callVerificationFunction(request: VerificationRequest): Pr
     if (error) {
       return { success: false, error: error.message }
     }
+    if (data && data.success === false) {
+      return { success: false, error: data.error || 'Failed to send verification code' }
+    }
+    if (data && data.error && !data.success) {
+      return { success: false, error: data.error }
+    }
 
-    return data as ApiResponse
+    return { success: true, ...(data || {}) }
   } catch (error) {
     return { success: false, error: 'Failed to process verification request' }
   }
@@ -214,11 +220,9 @@ export async function sendVerificationCode(email: string, userId: string, type: 
       options: { shouldCreateUser: false },
     })
     if (!error) return { success: true }
-    const generated = await callVerificationFunction({ action: 'generate', email: addr, userId, type })
-    if (generated.success) return generated
     return {
       success: false,
-      error: error?.message || generated.error || 'Failed to send verification code',
+      error: error.message || 'Failed to send verification code',
     }
   }
 
@@ -233,9 +237,9 @@ export async function verifyCode(userId: string, code: string, email?: string): 
     return { success: false, error: 'Enter the 8-digit code from your email' }
   }
 
-  const addr = email || await lookupEmail(userId)
+  const addr = (email || await lookupEmail(userId) || '').trim().toLowerCase()
   if (addr) {
-    for (const otpType of ['signup', 'email'] as const) {
+    for (const otpType of ['email', 'magiclink', 'signup', 'recovery'] as const) {
       const { error } = await supabase().auth.verifyOtp({
         email: addr,
         token: digits,

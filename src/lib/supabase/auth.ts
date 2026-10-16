@@ -38,24 +38,20 @@ export async function loginAdmin(email: string, password: string): Promise<AuthR
       return { success: false, error: 'User profile not found' }
     }
 
-    // Require email verification for admin and super_admin
     if (profile.role === 'admin' || profile.role === 'super_admin') {
       const userId = authData.user.id
-      const userEmail = authData.user.email!
-      const verificationResult = await sendVerificationCode(userEmail, userId, 'login')
+      const userEmail = (authData.user.email || email).trim().toLowerCase()
+      await supabase().auth.signOut()
 
+      const verificationResult = await sendVerificationCode(userEmail, userId, 'login')
       if (!verificationResult.success) {
-        await supabase().auth.signOut()
         return { success: false, error: verificationResult.error || 'Failed to send verification code' }
       }
-
-      // Password session is not enough for admin — OTP must complete the sign-in.
-      await supabase().auth.signOut()
 
       return {
         success: true,
         tempUserId: userId,
-        requiresVerification: true
+        requiresVerification: true,
       }
     }
 
@@ -67,15 +63,41 @@ export async function loginAdmin(email: string, password: string): Promise<AuthR
 }
 
 // Verify admin login
-export async function verifyAdminLogin(tempUserId: string, code: string, email?: string): Promise<AuthResponse> {
+export async function verifyAdminLogin(
+  tempUserId: string,
+  code: string,
+  email?: string,
+  _password?: string,
+): Promise<AuthResponse> {
   try {
-    const result = await verifyCode(tempUserId, code, email)
-    
-    if (result.success) {
-      return { success: true }
-    } else {
-      return { success: false, error: result.error || 'Verification failed' }
+    const digits = String(code || '').replace(/\D/g, '')
+    const addr = (email || '').trim().toLowerCase()
+    if (digits.length < 8) {
+      return { success: false, error: 'Enter the 8-digit code from your email' }
     }
+    if (!addr) {
+      return { success: false, error: 'Session expired. Sign in again.' }
+    }
+
+    let lastError = 'Invalid or expired verification code'
+    for (const otpType of ['email', 'magiclink'] as const) {
+      const { data, error } = await supabase().auth.verifyOtp({
+        email: addr,
+        token: digits,
+        type: otpType,
+      })
+      if (error) {
+        lastError = error.message
+        continue
+      }
+      const { data: sessionData } = await supabase().auth.getSession()
+      if (data.session || sessionData.session) {
+        await supabase().from('users').update({ status: 'active' }).eq('id', tempUserId)
+        return { success: true }
+      }
+    }
+
+    return { success: false, error: lastError }
   } catch (error) {
     console.error('Verification error:', error)
     return { success: false, error: 'An unexpected error occurred' }
@@ -83,7 +105,7 @@ export async function verifyAdminLogin(tempUserId: string, code: string, email?:
 }
 
 export async function resendAdminLoginCode(email: string, userId: string): Promise<AuthResponse> {
-  const result = await sendVerificationCode(email, userId, 'login')
+  const result = await sendVerificationCode(email.trim().toLowerCase(), userId, 'login')
   if (result.success) return { success: true }
   return { success: false, error: result.error || 'Failed to resend verification code' }
 }

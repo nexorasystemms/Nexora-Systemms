@@ -5,7 +5,13 @@ import { usePageTitle } from "@/lib/usePageTitle";
 
 type Stage = "password" | "email_otp" | "forgot_password" | "reset_code" | "reset_password";
 
-const RESEND_COOLDOWN_SECONDS = 30;
+const CODE_TTL_SECONDS = 180;
+
+function formatMmSs(total: number): string {
+  const m = Math.floor(Math.max(0, total) / 60);
+  const s = Math.max(0, total) % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
 
 function maskEmail(email: string): string {
   const [local, domain] = email.split("@");
@@ -35,19 +41,20 @@ export default function LoginPage() {
     return null;
   });
   const [loading, setLoading] = useState(false);
-  const [resendCooldown, setResendCooldown] = useState(0);
+  const [codeExpiresIn, setCodeExpiresIn] = useState(0);
 
   useEffect(() => {
-    if (resendCooldown <= 0) return;
-    const timer = setInterval(() => setResendCooldown((s) => Math.max(0, s - 1)), 1000);
+    const timer = setInterval(() => {
+      setCodeExpiresIn((s) => (s <= 0 ? 0 : s - 1));
+    }, 1000);
     return () => clearInterval(timer);
-  }, [resendCooldown]);
+  }, []);
 
   async function handlePasswordSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setLoading(true);
-    const result = await loginAdmin(email, password);
+    const result = await loginAdmin(email.trim().toLowerCase(), password);
     if (!result.success) {
       setError(result.error || "Login failed");
       setLoading(false);
@@ -56,7 +63,7 @@ export default function LoginPage() {
     if (result.requiresVerification && result.tempUserId) {
       setTempUserId(result.tempUserId);
       setStage("email_otp");
-      setResendCooldown(RESEND_COOLDOWN_SECONDS);
+      setCodeExpiresIn(CODE_TTL_SECONDS);
       setLoading(false);
       return;
     }
@@ -67,7 +74,7 @@ export default function LoginPage() {
     e.preventDefault();
     setError(null);
     setLoading(true);
-    const result = await verifyAdminLogin(tempUserId, code, email);
+    const result = await verifyAdminLogin(tempUserId, code, email.trim().toLowerCase(), password);
     if (!result.success) {
       setError(result.error || "Invalid verification code");
       setLoading(false);
@@ -89,7 +96,7 @@ export default function LoginPage() {
     setStage("reset_code");
     setCode("");
     setLoading(false);
-    setResendCooldown(RESEND_COOLDOWN_SECONDS);
+    setCodeExpiresIn(CODE_TTL_SECONDS);
   }
 
   async function handleResetCodeSubmit(e: React.FormEvent) {
@@ -127,12 +134,12 @@ export default function LoginPage() {
   }
 
   async function handleResend() {
-    if (resendCooldown > 0) return;
+    if (codeExpiresIn > 0) return;
     setError(null);
     const result = stage === "email_otp"
       ? await resendAdminLoginCode(email, tempUserId)
       : await sendPasswordResetCode(email);
-    if (result.success) setResendCooldown(RESEND_COOLDOWN_SECONDS);
+    if (result.success) setCodeExpiresIn(CODE_TTL_SECONDS);
     else setError(result.error || "Failed to resend code");
   }
 
@@ -219,7 +226,10 @@ export default function LoginPage() {
                 <div>
                   <h1 className="text-lg font-semibold text-on-surface mb-1">Check your email</h1>
                   <p className="text-sm text-on-surface-variant">
-                    We sent an 8-digit code to <span className="font-medium text-on-surface">{maskEmail(email)}</span>. Enter it below to finish signing in.
+                    We sent an 8-digit code to <span className="font-medium text-on-surface">{maskEmail(email)}</span>. Type that code here — do not click any sign-in link in other emails.
+                  </p>
+                  <p className={`mt-2 text-center font-mono text-lg font-semibold tabular-nums ${codeExpiresIn === 0 ? "text-error" : "text-on-surface"}`}>
+                    {codeExpiresIn > 0 ? `Code expires in ${formatMmSs(codeExpiresIn)}` : "Code expired"}
                   </p>
                 </div>
                 <input
@@ -245,14 +255,14 @@ export default function LoginPage() {
                   <button
                     type="button"
                     onClick={handleResend}
-                    disabled={resendCooldown > 0}
+                    disabled={codeExpiresIn > 0}
                     className="text-secondary hover:underline disabled:text-outline disabled:no-underline disabled:cursor-not-allowed"
                   >
-                    {resendCooldown > 0 ? `Resend code (${resendCooldown}s)` : "Resend code"}
+                    {codeExpiresIn > 0 ? `Resend code (${formatMmSs(codeExpiresIn)})` : "Resend code"}
                   </button>
                   <button
                     type="button"
-                    onClick={() => { setStage("password"); setCode(""); setError(null); }}
+                    onClick={() => { setStage("password"); setCode(""); setError(null); setCodeExpiresIn(0); }}
                     className="hover:underline"
                   >
                     Use a different account
@@ -298,6 +308,9 @@ export default function LoginPage() {
                   <p className="text-sm text-on-surface-variant">
                     An 8-digit code was sent to <span className="font-medium text-on-surface">{maskEmail(email)}</span>.
                   </p>
+                  <p className={`mt-2 text-center font-mono text-lg font-semibold tabular-nums ${codeExpiresIn === 0 ? "text-error" : "text-on-surface"}`}>
+                    {codeExpiresIn > 0 ? `Code expires in ${formatMmSs(codeExpiresIn)}` : "Code expired"}
+                  </p>
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-[12px] font-medium text-on-surface-variant">Verification code</label>
@@ -322,10 +335,10 @@ export default function LoginPage() {
                   <button
                     type="button"
                     onClick={handleResend}
-                    disabled={resendCooldown > 0}
+                    disabled={codeExpiresIn > 0}
                     className="text-secondary hover:underline disabled:text-outline disabled:no-underline disabled:cursor-not-allowed"
                   >
-                    {resendCooldown > 0 ? `Resend code (${resendCooldown}s)` : "Resend code"}
+                    {codeExpiresIn > 0 ? `Resend code (${formatMmSs(codeExpiresIn)})` : "Resend code"}
                   </button>
                   <button type="button" onClick={() => { setStage("forgot_password"); setCode(""); setError(null); }} className="hover:underline">
                     Change email

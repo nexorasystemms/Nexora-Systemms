@@ -21,6 +21,14 @@ export function createClient() {
     );
   }
 
-  client = createSupabaseClient<Database>(url, anonKey);
+  client = createSupabaseClient<Database>(url, anonKey, {
+    auth: {
+      // Digit OTPs fail under PKCE (the code is not an OAuth auth code).
+      flowType: "implicit",
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+    },
+  });
   return client;
 }

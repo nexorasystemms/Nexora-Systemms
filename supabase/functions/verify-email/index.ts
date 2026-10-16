@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { SmtpClient } from "https://deno.land/x/smtp@v0.7.0/mod.ts"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -66,23 +67,10 @@ serve(async (req) => {
           )
         }
 
-        // Send email via the send-email function
-        const emailResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/send-email`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`
-          },
-          body: JSON.stringify({
-            to: email,
-            subject: getEmailSubject(type),
-            html: getEmailTemplate(verificationCode, type),
-            type: 'verification'
-          })
-        })
-
-        if (!emailResponse.ok) {
-          console.error('Failed to send email:', await emailResponse.text())
+        try {
+          await sendCodeOnlyEmail(email, verificationCode, type)
+        } catch (mailError) {
+          console.error('Failed to send email:', mailError)
           return new Response(
             JSON.stringify({ error: 'Failed to send verification email' }),
             { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -218,22 +206,10 @@ serve(async (req) => {
           )
         }
 
-        // Send new email
-        const newEmailResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/send-email`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`
-          },
-          body: JSON.stringify({
-            to: user.email,
-            subject: getEmailSubject(type),
-            html: getEmailTemplate(newCode, type),
-            type: 'verification'
-          })
-        })
-
-        if (!newEmailResponse.ok) {
+        try {
+          await sendCodeOnlyEmail(user.email, newCode, type)
+        } catch (mailError) {
+          console.error('Failed to send email:', mailError)
           return new Response(
             JSON.stringify({ error: 'Failed to send new verification email' }),
             { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -266,6 +242,63 @@ serve(async (req) => {
     )
   }
 })
+
+async function sendCodeOnlyEmail(to: string, code: string, type: string): Promise<void> {
+  const subject = getEmailSubject(type)
+  const html = getEmailTemplate(code, type)
+  const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
+  const anon = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+
+  if (supabaseUrl && anon) {
+    try {
+      const res = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${anon}`,
+        },
+        body: JSON.stringify({ to, subject, html, type: 'verification' }),
+      })
+      if (res.ok) return
+      console.error('send-email function failed:', await res.text())
+    } catch (error) {
+      console.error('send-email function unreachable:', error)
+    }
+  }
+
+  const smtpHost = Deno.env.get('CUSTOM_SMTP_HOST') || Deno.env.get('SMTP_HOST') || 'smtp.gmail.com'
+  const smtpPort = parseInt(Deno.env.get('CUSTOM_SMTP_PORT') || Deno.env.get('SMTP_PORT') || '587')
+  const smtpUser = Deno.env.get('CUSTOM_SMTP_USER') || Deno.env.get('SMTP_USER')
+  const smtpPass = Deno.env.get('CUSTOM_SMTP_PASS') || Deno.env.get('SMTP_PASS')
+  const fromEmail = Deno.env.get('CUSTOM_SMTP_FROM') || Deno.env.get('SMTP_FROM') || smtpUser
+
+  if (!smtpUser || !smtpPass || !fromEmail) {
+    throw new Error('Email sending is not configured')
+  }
+
+  const client = new SmtpClient()
+  try {
+    await client.connectTLS({
+      hostname: smtpHost,
+      port: smtpPort,
+      username: smtpUser,
+      password: smtpPass,
+    })
+    await client.send({
+      from: fromEmail,
+      to: [to],
+      subject,
+      content: html,
+      html,
+    })
+  } finally {
+    try {
+      await client.close()
+    } catch (_closeError) {
+      // ignore
+    }
+  }
+}
 
 function getEmailSubject(type: string): string {
   switch (type) {

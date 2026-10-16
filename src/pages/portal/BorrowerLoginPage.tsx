@@ -4,7 +4,13 @@ import { TMU_ROOT, tmuAssets, tmuPortal } from "../../lib/tenants";
 import { loginBorrower, sendPasswordResetCode, verifyPasswordResetCode, completePasswordReset } from "../../lib/supabase/auth";
 
 type Stage = "login" | "forgot_password" | "reset_code" | "reset_password";
-const RESEND_COOLDOWN = 30;
+const CODE_TTL_SECONDS = 180;
+
+function formatMmSs(total: number): string {
+  const m = Math.floor(Math.max(0, total) / 60);
+  const s = Math.max(0, total) % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
 
 function maskEmail(email: string): string {
   const [local, domain] = email.split("@");
@@ -84,10 +90,9 @@ export default function BorrowerLoginPage() {
   const [cooldown, setCooldown] = useState(0);
 
   useEffect(() => {
-    if (cooldown <= 0) return;
-    const t = setInterval(() => setCooldown((s) => Math.max(0, s - 1)), 1000);
+    const t = setInterval(() => setCooldown((s) => (s <= 0 ? 0 : s - 1)), 1000);
     return () => clearInterval(t);
-  }, [cooldown]);
+  }, []);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault(); setError(null); setLoading(true);
@@ -100,7 +105,7 @@ export default function BorrowerLoginPage() {
     e.preventDefault(); setError(null); setInfo(null); setLoading(true);
     const r = await sendPasswordResetCode(email.trim().toLowerCase());
     if (!r.success) { setError(r.error || "Could not send code."); setLoading(false); return; }
-    setStage("reset_code"); setCode(""); setLoading(false); setCooldown(RESEND_COOLDOWN);
+    setStage("reset_code"); setCode(""); setLoading(false); setCooldown(CODE_TTL_SECONDS);
   }
 
   async function handleVerifyResetCode(e: React.FormEvent) {
@@ -126,7 +131,7 @@ export default function BorrowerLoginPage() {
   async function handleResend() {
     if (cooldown > 0) return; setError(null);
     const r = await sendPasswordResetCode(email.trim().toLowerCase());
-    if (r.success) setCooldown(RESEND_COOLDOWN); else setError(r.error ?? "Could not resend code.");
+    if (r.success) setCooldown(CODE_TTL_SECONDS); else setError(r.error ?? "Could not resend code.");
   }
 
   const stageTitle =
@@ -198,6 +203,9 @@ export default function BorrowerLoginPage() {
                 <p className="text-sm text-slate-500">
                   An 8-digit code was sent to <span className="font-medium text-slate-700">{maskEmail(email)}</span>
                 </p>
+                <p className={`text-center font-mono text-lg font-semibold tabular-nums ${cooldown === 0 ? "text-rose-600" : "text-slate-800"}`}>
+                  {cooldown > 0 ? `Code expires in ${formatMmSs(cooldown)}` : "Code expired"}
+                </p>
                 <Field label="Verification Code" id="code" value={code}
                   onChange={(v) => setCode(v.replace(/\D/g, ""))}
                   placeholder="Enter the code from your email" inputMode="numeric" pattern="[0-9]*" maxLength={8}
@@ -208,7 +216,7 @@ export default function BorrowerLoginPage() {
                     type="button" onClick={handleResend} disabled={cooldown > 0}
                     className="text-secondary hover:underline disabled:text-slate-400 disabled:no-underline min-h-[44px] px-1"
                   >
-                    {cooldown > 0 ? `Resend (${cooldown}s)` : "Resend code"}
+                    {cooldown > 0 ? `Resend (${formatMmSs(cooldown)})` : "Resend code"}
                   </button>
                   <button
                     type="button"
