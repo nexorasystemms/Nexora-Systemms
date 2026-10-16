@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { createClient } from "@/lib/supabase/client";
+import CustomerChat from "@/components/CustomerChat";
 import SignOutButton from "@/pages/portal/SignOutButton";
 import { usePageTitle } from "@/lib/usePageTitle";
 import { TMU_ROOT, tmuAssets, tmuContact, tmuPortal } from "@/lib/tenants";
@@ -174,6 +175,9 @@ export default function PortalLayout() {
           </div>
         </div>
       </footer>
+
+      {/* Floating assistant: signed-in customers only */}
+      {profile?.role === "borrower" && <CustomerChat />}
     </div>
   );
 }
